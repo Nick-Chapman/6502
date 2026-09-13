@@ -1,0 +1,8 @@
+
+*top: first.rom
+  hd $<
+
+#vasm6502_oldstyle $< -c02 -esc -Fbin -wfail -maxerrors=0 -quiet -pic
+
+!first.rom : first.s
+  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
