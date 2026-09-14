@@ -1,8 +1,17 @@
 
-*top: first.rom
-  hd $<
-
 #vasm6502_oldstyle $< -c02 -esc -Fbin -wfail -maxerrors=0 -quiet -pic
 
+*top-first: first.rom
+  hd $<
 !first.rom : first.s
+  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
+
+*top-zero: zero.rom
+  hd $<
+!zero.rom : zero.s
+  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
+
+*top-fib: fib.rom
+  hd $<
+!fib.rom : fib.s
   ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
