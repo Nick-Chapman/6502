@@ -17,7 +17,32 @@ LCD_FunctionSet_8bit_2lines    = %00111000
 
     org $8000
 
+lcd_wait:
+    pha
+.loop:
+    ;; set port-B mode to input
+    stz DDRB
+    ;; read busy flag
+    lda #RW
+    sta PORTA
+    lda #(RW | E)
+    sta PORTA
+    lda PORTB
+    ;; test busy bit
+    and #$80
+    bne .loop
+
+    lda #RW
+    sta PORTA
+    ;; restore port-B mode to output
+    lda #$ff
+    sta DDRB
+
+    pla
+    rts
+
 lcd_instruction:
+    jsr lcd_wait
     sta PORTB
     lda #0
     sta PORTA
@@ -28,6 +53,7 @@ lcd_instruction:
     rts
 
 lcd_emitChar:
+    jsr lcd_wait
     sta PORTB
     lda #RS
     sta PORTA
@@ -51,23 +77,23 @@ reset:
     lda #LCD_DisplayOn_CursorOn_NoBlink
     jsr lcd_instruction
 
-    lda #LCD_ReturnHome
-    ;;lda #LCD_ClearDisplay
+    ;;lda #LCD_ReturnHome
+    lda #LCD_ClearDisplay
     jsr lcd_instruction
 
     ldx #0
-nextMessageChar:
+.nextMessageChar:
     lda message, x
-    beq done
+    beq .done
     jsr lcd_emitChar
     inx
-    jmp nextMessageChar
-done:
+    jmp .nextMessageChar
+.done:
 
-loop:
+finalHang:
     ;;lda #LCD_DisplayShift_Left
     ;;jsr lcd_instruction
-    jmp loop
+    jmp finalHang
 
 message:
     asciiz "Hello, world!"
