@@ -1,17 +1,12 @@
 
-#vasm6502_oldstyle $< -c02 -esc -Fbin -wfail -maxerrors=0 -quiet -pic
+example.files :
+  echo '$glob:src' >> $out
 
-*top-first: first.rom
-  hd $<
-!first.rom : first.s
-  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
+example.names : example.files
+  sed 's|\(.*\).s|\1|' < $in > $out
 
-*top-zero: zero.rom
-  hd $<
-!zero.rom : zero.s
-  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
+rules : example.names
+  cat $in | sed 's|\(.*\)|*top-\1 : rom/\1.rom : hd \1.rom|' >> $out
+  cat $in | sed 's|\(.*\)|!rom/\1.rom : src/\1.s : ~/other/vasm/vasm6502_oldstyle \1.s -c02 -Fbin -quiet -o \1.rom|' >> $out
 
-*top-fib: fib.rom
-  hd $<
-!fib.rom : fib.s
-  ~/other/vasm/vasm6502_oldstyle $< -c02 -Fbin -quiet -o $@
+include rules
