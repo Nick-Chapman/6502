@@ -147,8 +147,8 @@ reset:
     jsr reset_last_counter
     jsr reset_seconds
 .loop:
-    jsr every_second
-    jsr update_status_display
+    ;;jsr every_second
+    ;;jsr update_status_display
     jsr inc_counter
     jmp .loop
 
@@ -262,9 +262,11 @@ irq:
     bvs .timer1
     jmp .done
 .timer1:
-    inc jiffy
     lda #%01000000
     sta IFR
+    inc jiffy
+    jsr every_second
+    jsr update_status_display
 .done:
     pla
     rti
