@@ -28,7 +28,8 @@ LCD_FunctionSet_8bit_2lines    = %00111000
 JIFFY = 20
 LAST_TICK = 21
 LAST_LED_TOGGLE = 22
-COUNTER = 23 ;; 3bytes in zero page
+ACOUNTER = 23 ;; 3bytes in zero page
+BCOUNTER = 26 ;; 3bytes in zero page
 
     org $8000
 
@@ -127,31 +128,63 @@ display_hex_byte: ; A->()
     jsr display_hex_nibble
     rts
 
-init_counter:
-    stz COUNTER
-    stz COUNTER+1
-    stz COUNTER+2
+init_counterA:
+    stz ACOUNTER
+    stz ACOUNTER+1
+    stz ACOUNTER+2
+    rts
+init_counterB:
+    stz BCOUNTER
+    stz BCOUNTER+1
+    stz BCOUNTER+2
     rts
 
 inc_counter:
-    inc COUNTER
+    sed ; decimal
+    sec
+    lda ACOUNTER
+    adc #0
+    sta ACOUNTER
     bne .done
-    inc COUNTER+1
+    sec
+    lda ACOUNTER+1
+    adc #0
+    sta ACOUNTER+1
     bne .done
-    inc COUNTER+2
+    sec
+    lda ACOUNTER+2
+    adc #0
+    sta ACOUNTER+2
 .done:
+    cld
     rts
 
 display_counter:
+    jsr inc_counter
     lda #LCD_ReturnHome
     jsr lcd_instruction
-    lda COUNTER+2
+    lda BCOUNTER+2
     jsr display_hex_byte
-    lda COUNTER+1
+    lda BCOUNTER+1
     jsr display_hex_byte
-    lda COUNTER
+    lda BCOUNTER
     jsr display_hex_byte
     rts
+
+replace_counter: ; A-->B
+    lda ACOUNTER
+    sta BCOUNTER
+    lda ACOUNTER+1
+    sta BCOUNTER+1
+    lda ACOUNTER+2
+    sta BCOUNTER+2
+    rts
+
+;;; Timer interrupts. Every 1/100s (jiffy)
+;;; main loop (A) display counter (B) action synced to the second
+;;; Display counter counts how often in is called.
+;;; That counter is saved on each second. That is the value displayed
+;;; Also we display in decimal.
 
 reset:
     jsr via_init
@@ -159,12 +192,13 @@ reset:
     stz JIFFY
     stz LAST_TICK
     stz LAST_LED_TOGGLE
-    jsr init_counter
+    jsr init_counterA
+    jsr init_counterB
     cli ; enable IRQ
 .loop:
     jsr display_counter
     jsr tick_counter_every_second
-    jsr toggle_led_25ms
+    ;;jsr toggle_led_25ms
     jmp .loop
 
 tick_counter_every_second:
@@ -172,40 +206,44 @@ tick_counter_every_second:
     sec
     sbc LAST_TICK
     cmp #100
+    bcs .not_done ; hack for miss
     bne .done
+.not_done:
     lda JIFFY
     sta LAST_TICK
-    jsr inc_counter
+    ;;jsr inc_counter
+    jsr replace_counter
+    jsr init_counterA
 .done:
     rts
 
-toggle_led_25ms
-    lda JIFFY
-    sec
-    sbc LAST_LED_TOGGLE
-    cmp #50
-    bne .done
-    lda JIFFY
-    sta LAST_LED_TOGGLE
-    jsr toggle_led
-.done:
-    rts
+;; toggle_led_25ms
+;;     lda JIFFY
+;;     sec
+;;     sbc LAST_LED_TOGGLE
+;;     cmp #50
+;;     bne .done
+;;     lda JIFFY
+;;     sta LAST_LED_TOGGLE
+;;     jsr toggle_led
+;; .done:
+;;     rts
 
-toggle_led:
-    lda PORTA
-    eor #%1
-    sta PORTA
-    rts
+;; toggle_led:
+;;     lda PORTA
+;;     eor #%1
+;;     sta PORTA
+;;     rts
 
 irq:
     pha
     bit IFR
     bvs .timer1
-    lda IFR
-    ror
-    bcs .ca2
-    ror
-    bcs .ca1
+    ;;lda IFR
+    ;;ror
+    ;;bcs .ca2
+    ;;ror
+    ;;bcs .ca1
     ;; IRQ fired; but IFR has 0s for ca1/2. how possible?
     ;; do nothing
     jmp .done
@@ -213,17 +251,17 @@ irq:
     inc JIFFY
     lda #%01000000
     sta IFR
-    jmp .done
-.ca1:
-    inc COUNTER+1
-    lda #%00000010
-    sta IFR
-    jmp .done
-.ca2:
-    inc COUNTER+2
-    lda #%00000001
-    sta IFR
-    jmp .done
+    ;;jmp .done
+;; .ca1:
+;;     inc COUNTER+1
+;;     lda #%00000010
+;;     sta IFR
+;;     jmp .done
+;; .ca2:
+;;     inc COUNTER+2
+;;     lda #%00000001
+;;     sta IFR
+;;     jmp .done
 .done:
     pla
 nmi: ;; silly share rti!
