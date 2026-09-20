@@ -5,8 +5,7 @@ example.files :
 example.names : example.files
   sed 's|\(.*\).s|\1|' < $in > $out
 
-rules : example.names
-  cat $in | sed 's|\(.*\)|*top-\1 : rom/\1.rom : hd \1.rom|' >> $out
-  cat $in | sed 's|\(.*\)|!rom/\1.rom : src/\1.s : ~/other/vasm/vasm6502_oldstyle \1.s -c02 -Fbin -quiet -o \1.rom|' >> $out
+rules : mk.rules example.names
+  ./$in1 $$(cat $in2) > $out
 
 include rules
