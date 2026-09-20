@@ -1,0 +1,216 @@
+Sections:
+00: "org0001:8000" (8000-80C4)
+01: "org0002:fffc" (FFFC-0)
+
+
+Source: "counting.s"
+                        	     1: 
+                        	     2: PORTB = $6000
+                        	     3: PORTA = $6001
+                        	     4: DDRB  = $6002
+                        	     5: DDRA  = $6003
+                        	     6: 
+                        	     7: E  = %10000000 ; enable
+                        	     8: RW = %01000000 ; read/write
+                        	     9: RS = %00100000 ; register select
+                        	    10: 
+                        	    11: LCD_ClearDisplay               = %00000001
+                        	    12: LCD_ReturnHome                 = %00000010
+                        	    13: LCD_EntryMode_Inc_NoShift      = %00000110
+                        	    14: LCD_DisplayOn_CursorOn_NoBlink = %00001110
+                        	    15: LCD_DisplayShift_Left          = %00011000
+                        	    16: LCD_FunctionSet_8bit_2lines    = %00111000
+                        	    17: 
+                        	    18:     org $8000
+                        	    19: 
+                        	    20: lcd_init:
+                        	    21:     ;; set all pins on port-B as output
+00:8000 A9FF            	    22:     lda #%11111111
+00:8002 8D0260          	    23:     sta DDRB
+                        	    24:     ;; set most significant 3 pins on port-A as output
+00:8005 A9E0            	    25:     lda #%11100000
+00:8007 8D0360          	    26:     sta DDRA
+00:800A A938            	    27:     lda #LCD_FunctionSet_8bit_2lines
+00:800C 203B80          	    28:     jsr lcd_instruction
+00:800F A90E            	    29:     lda #LCD_DisplayOn_CursorOn_NoBlink
+00:8011 203B80          	    30:     jsr lcd_instruction
+00:8014 A901            	    31:     lda #LCD_ClearDisplay
+00:8016 203B80          	    32:     jsr lcd_instruction
+00:8019 60              	    33:     rts
+                        	    34: 
+                        	    35: lcd_wait:
+00:801A 48              	    36:     pha
+                        	    37: .loopBusy:
+                        	    38:     ;; V1
+                        	    39:     ;; IO wait invokes workload
+                        	    40:     ;; counter reach 2^20 in 46s
+                        	    41:     ;; so ~87 clocks/tick, of which ~23 are the workload
+                        	    42:     ;;jsr inc_counter
+                        	    43: 
+                        	    44:     ;; set port-B mode to input
+00:801B 9C0260          	    45:     stz DDRB
+                        	    46:     ;; read busy flag
+00:801E A940            	    47:     lda #RW
+00:8020 8D0160          	    48:     sta PORTA
+00:8023 A9C0            	    49:     lda #(RW | E)
+00:8025 8D0160          	    50:     sta PORTA
+00:8028 AD0060          	    51:     lda PORTB
+                        	    52:     ;; test busy bit
+00:802B 2980            	    53:     and #$80
+00:802D D0EC            	    54:     bne .loopBusy
+00:802F A940            	    55:     lda #RW
+00:8031 8D0160          	    56:     sta PORTA
+                        	    57:     ;; restore port-B mode to output
+00:8034 A9FF            	    58:     lda #$ff
+00:8036 8D0260          	    59:     sta DDRB
+00:8039 68              	    60:     pla
+00:803A 60              	    61:     rts
+                        	    62: 
+                        	    63: lcd_instruction: ; A->()
+00:803B 201A80          	    64:     jsr lcd_wait
+00:803E 8D0060          	    65:     sta PORTB
+00:8041 A900            	    66:     lda #0
+00:8043 8D0160          	    67:     sta PORTA
+00:8046 A980            	    68:     lda #E
+00:8048 8D0160          	    69:     sta PORTA
+00:804B A900            	    70:     lda #0
+00:804D 8D0160          	    71:     sta PORTA
+00:8050 60              	    72:     rts
+                        	    73: 
+                        	    74: lcd_emitChar: ; A->()
+00:8051 201A80          	    75:     jsr lcd_wait
+00:8054 8D0060          	    76:     sta PORTB
+00:8057 A920            	    77:     lda #RS
+00:8059 8D0160          	    78:     sta PORTA
+00:805C A9A0            	    79:     lda #(RS | E)
+00:805E 8D0160          	    80:     sta PORTA
+00:8061 A920            	    81:     lda #RS
+00:8063 8D0160          	    82:     sta PORTA
+00:8066 60              	    83:     rts
+                        	    84: 
+                        	    85: display_hex_nibble: ; A->()
+00:8067 AA              	    86:     tax
+00:8068 BD6F80          	    87:     lda .hex_chars, x
+00:806B 205180          	    88:     jsr lcd_emitChar
+00:806E 60              	    89:     rts
+                        	    90: .hex_chars:
+00:806F 3031323334353637	    91:     ascii "0123456789abcdef"
+00:8077 3839616263646566
+                        	    92: 
+                        	    93: display_hex_byte: ; A->()
+00:807F 48              	    94:     pha
+00:8080 4A              	    95:     lsr
+00:8081 4A              	    96:     lsr
+00:8082 4A              	    97:     lsr
+00:8083 4A              	    98:     lsr
+00:8084 206780          	    99:     jsr display_hex_nibble
+00:8087 68              	   100:     pla
+00:8088 290F            	   101:     and #$f
+00:808A 206780          	   102:     jsr display_hex_nibble
+00:808D 60              	   103:     rts
+                        	   104: 
+                        	   105: COUNTER = 20 ;; 3bytes in zero page
+                        	   106: 
+                        	   107: init_counter:
+00:808E 6414            	   108:     stz COUNTER
+00:8090 6415            	   109:     stz COUNTER+1
+00:8092 6416            	   110:     stz COUNTER+2
+00:8094 60              	   111:     rts
+                        	   112: 
+                        	   113: inc_counter:
+00:8095 E614            	   114:     inc COUNTER
+00:8097 D009            	   115:     bne .done
+                        	   116: 
+                        	   117:     ;; V3... selected
+                        	   118:     ;; workload invokes IO (approx every 3ms)
+                        	   119:     ;; counter reach 2^20 in 13s
+                        	   120:     ;; so ~24 clocks/tick, which is only about 5% overhead for IO
+00:8099 20A380          	   121:     jsr display_counter
+                        	   122: 
+00:809C E615            	   123:     inc COUNTER+1
+00:809E D002            	   124:     bne .done
+00:80A0 E616            	   125:     inc COUNTER+2
+                        	   126: 
+                        	   127:     ;; V2
+                        	   128:     ;; workload invokes IO (approx every 3/4 sec)
+                        	   129:     ;; counter reach 2^20 in 12s
+                        	   130:     ;; so ~23 clocks/tick, IO overhead is basically zero
+                        	   131:     ;; jsr display_counter
+                        	   132: 
+                        	   133: .done:
+00:80A2 60              	   134:     rts
+                        	   135: 
+                        	   136: display_counter:
+00:80A3 A902            	   137:     lda #LCD_ReturnHome
+00:80A5 203B80          	   138:     jsr lcd_instruction
+00:80A8 A516            	   139:     lda COUNTER+2
+00:80AA 207F80          	   140:     jsr display_hex_byte
+00:80AD A515            	   141:     lda COUNTER+1
+00:80AF 207F80          	   142:     jsr display_hex_byte
+00:80B2 A514            	   143:     lda COUNTER
+00:80B4 207F80          	   144:     jsr display_hex_byte
+00:80B7 60              	   145:     rts
+                        	   146: 
+                        	   147: reset:
+00:80B8 200080          	   148:     jsr lcd_init
+00:80BB 208E80          	   149:     jsr init_counter
+                        	   150: .loop:
+                        	   151:     ;;jsr display_counter ;; (for V1)
+00:80BE 209580          	   152:     jsr inc_counter ;; (for V2 or V3)
+00:80C1 4CBE80          	   153:     jmp .loop
+                        	   154: 
+                        	   155:     org $fffc
+01:FFFC B880            	   156:     word reset
+01:FFFE 0000            	   157:     word 0
+                        	   158: 
+                        	   159: 
+                        	   160: 
+
+
+Symbols by name:
+COUNTER                          E:0014
+DDRA                             E:6003
+DDRB                             E:6002
+E                                E:0080
+LCD_ClearDisplay                 E:0001
+LCD_DisplayOn_CursorOn_NoBlink   E:000E
+LCD_FunctionSet_8bit_2lines      E:0038
+LCD_ReturnHome                   E:0002
+PORTA                            E:6001
+PORTB                            E:6000
+RS                               E:0020
+RW                               E:0040
+display_counter                  A:80A3
+display_hex_byte                 A:807F
+display_hex_nibble               A:8067
+inc_counter                      A:8095
+init_counter                     A:808E
+lcd_emitChar                     A:8051
+lcd_init                         A:8000
+lcd_instruction                  A:803B
+lcd_wait                         A:801A
+reset                            A:80B8
+
+Symbols by value:
+0001 LCD_ClearDisplay
+0002 LCD_ReturnHome
+000E LCD_DisplayOn_CursorOn_NoBlink
+0014 COUNTER
+0020 RS
+0038 LCD_FunctionSet_8bit_2lines
+0040 RW
+0080 E
+6000 PORTB
+6001 PORTA
+6002 DDRB
+6003 DDRA
+8000 lcd_init
+801A lcd_wait
+803B lcd_instruction
+8051 lcd_emitChar
+8067 display_hex_nibble
+807F display_hex_byte
+808E init_counter
+8095 inc_counter
+80A3 display_counter
+80B8 reset

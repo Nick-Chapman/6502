@@ -1,0 +1,39 @@
+Sections:
+00: "org0001:8000" (8000-800D)
+01: "org0002:fffc" (FFFC-0)
+
+
+Source: "zero.s"
+                        	     1: 
+                        	     2: PORTB = $6000
+                        	     3: DDRB = $6002
+                        	     4: 
+                        	     5:     org $8000
+                        	     6: 
+                        	     7: ;;; Example to read and write in zero page memory
+00:8000 00              	     8:     byte 0
+00:8001 00              	     9:     byte 0
+00:8002 00              	    10:     byte 0
+                        	    11: reset:
+                        	    12: 
+00:8003 A942            	    13:     lda #$42
+00:8005 8501            	    14:     sta $1
+00:8007 EA              	    15:     nop
+00:8008 A601            	    16:     ldx $1
+                        	    17: 
+                        	    18: loop:
+00:800A 4C0A80          	    19:     jmp loop
+                        	    20: 
+                        	    21:     org $fffc
+01:FFFC 0380            	    22:     word reset
+01:FFFE 0000            	    23:     word 0
+                        	    24: 
+
+
+Symbols by name:
+loop                             A:800A
+reset                            A:8003
+
+Symbols by value:
+8003 reset
+800A loop

@@ -9,7 +9,7 @@ done
 for X in "$@"; do
 cat <<EOF
 
-!rom/$X.rom : src/$X.s
-  ~/other/vasm/vasm6502_oldstyle $X.s -c02 -Fbin -quiet -o $X.rom
+!rom/$X.rom !.list/$X.list : src/$X.s
+  ~/other/vasm/vasm6502_oldstyle $X.s -c02 -Fbin -quiet -o $X.rom -L $X.list
 EOF
 done
