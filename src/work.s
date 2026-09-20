@@ -1,4 +1,6 @@
 
+    org $8000
+
 PORTB = $6000
 PORTA = $6001
 DDRB  = $6002 ; data-direction register
@@ -24,8 +26,6 @@ LCD_DisplayOn_CursorOn_NoBlink = %00001110
 LCD_DisplayShift_Left          = %00011000
 LCD_FunctionSet_8bit_2lines    = %00111000
 
-    org $8000
-
 via_init:
     ;; set all pins on port-B and port-A as output
     lda #%11111111
@@ -45,61 +45,7 @@ via_init:
     sta T1CH ;; starts timer
     rts
 
-lcd_init:
-    lda #LCD_FunctionSet_8bit_2lines
-    jsr lcd_instruction
-    lda #LCD_DisplayOn_CursorOff
-    jsr lcd_instruction
-    lda #LCD_ClearDisplay
-    jsr lcd_instruction
-    rts
-
-lcd_wait:
-    pha
-    ;; set port-B mode to input
-    stz DDRB
-    ;; RS=0, RW=1, E=1
-    lda PORTA
-    and #(~RS)
-    ora #(RW | E)
-    sta PORTA
-.loopBusy:
-    ;; read busy flag
-    lda PORTB
-    ;; test busy bit
-    and #$80
-    bne .loopBusy
-    ;; restore port-B mode to output
-    lda #$ff
-    sta DDRB
-    pla
-    rts
-
-lcd_instruction: ; A->()
-    jsr lcd_wait
-    sta PORTB
-    lda PORTA
-    ;; RS=0. RW=0, E=1
-    and #(~(RS | RW))
-    ora #E
-    sta PORTA
-    ;; trigger E neg-edge
-    eor #E
-    sta PORTA
-    rts
-
-lcd_emitChar: ; A->()
-    jsr lcd_wait
-    sta PORTB
-    lda PORTA
-    ;; RS=1, RW=0, E=1
-    and #(~RW)
-    ora #(RS | E)
-    sta PORTA
-    ;; trigger E neg-edge
-    eor #E
-    sta PORTA
-    rts
+    include lcd.s
 
 display_hex_nibble: ; A->()
     tax

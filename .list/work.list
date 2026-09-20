@@ -5,32 +5,32 @@ Sections:
 
 Source: "work.s"
                         	     1: 
-                        	     2: PORTB = $6000
-                        	     3: PORTA = $6001
-                        	     4: DDRB  = $6002 ; data-direction register
-                        	     5: DDRA  = $6003
-                        	     6: 
-                        	     7: T1CL  = $6004
-                        	     8: T1CH  = $6005
-                        	     9: 
-                        	    10: ACR   = $600b ; auxillary control register (times and shift)
-                        	    11: PCR   = $600c ; peripheral control register (CA, CB)
-                        	    12: IFR   = $600d ; interrupt flag register
-                        	    13: IER   = $600e ; interrupt enable register
-                        	    14: 
-                        	    15: E  = %10000000 ; enable
-                        	    16: RW = %01000000 ; read/write
-                        	    17: RS = %00100000 ; register select
-                        	    18: 
-                        	    19: LCD_ClearDisplay               = %00000001
-                        	    20: LCD_ReturnHome                 = %00000010
-                        	    21: LCD_EntryMode_Inc_NoShift      = %00000110
-                        	    22: LCD_DisplayOn_CursorOff        = %00001100
-                        	    23: LCD_DisplayOn_CursorOn_NoBlink = %00001110
-                        	    24: LCD_DisplayShift_Left          = %00011000
-                        	    25: LCD_FunctionSet_8bit_2lines    = %00111000
-                        	    26: 
-                        	    27:     org $8000
+                        	     2:     org $8000
+                        	     3: 
+                        	     4: PORTB = $6000
+                        	     5: PORTA = $6001
+                        	     6: DDRB  = $6002 ; data-direction register
+                        	     7: DDRA  = $6003
+                        	     8: 
+                        	     9: T1CL  = $6004
+                        	    10: T1CH  = $6005
+                        	    11: 
+                        	    12: ACR   = $600b ; auxillary control register (times and shift)
+                        	    13: PCR   = $600c ; peripheral control register (CA, CB)
+                        	    14: IFR   = $600d ; interrupt flag register
+                        	    15: IER   = $600e ; interrupt enable register
+                        	    16: 
+                        	    17: E  = %10000000 ; enable
+                        	    18: RW = %01000000 ; read/write
+                        	    19: RS = %00100000 ; register select
+                        	    20: 
+                        	    21: LCD_ClearDisplay               = %00000001
+                        	    22: LCD_ReturnHome                 = %00000010
+                        	    23: LCD_EntryMode_Inc_NoShift      = %00000110
+                        	    24: LCD_DisplayOn_CursorOff        = %00001100
+                        	    25: LCD_DisplayOn_CursorOn_NoBlink = %00001110
+                        	    26: LCD_DisplayShift_Left          = %00011000
+                        	    27: LCD_FunctionSet_8bit_2lines    = %00111000
                         	    28: 
                         	    29: via_init:
                         	    30:     ;; set all pins on port-B and port-A as output
@@ -51,241 +51,248 @@ Source: "work.s"
 00:801E 8D0560          	    45:     sta T1CH ;; starts timer
 00:8021 60              	    46:     rts
                         	    47: 
-                        	    48: lcd_init:
-00:8022 A938            	    49:     lda #LCD_FunctionSet_8bit_2lines
-00:8024 204E80          	    50:     jsr lcd_instruction
-00:8027 A90C            	    51:     lda #LCD_DisplayOn_CursorOff
-00:8029 204E80          	    52:     jsr lcd_instruction
-00:802C A901            	    53:     lda #LCD_ClearDisplay
-00:802E 204E80          	    54:     jsr lcd_instruction
-00:8031 60              	    55:     rts
-                        	    56: 
-                        	    57: lcd_wait:
-00:8032 48              	    58:     pha
-                        	    59:     ;; set port-B mode to input
-00:8033 9C0260          	    60:     stz DDRB
-                        	    61:     ;; RS=0, RW=1, E=1
-00:8036 AD0160          	    62:     lda PORTA
-00:8039 29DF            	    63:     and #(~RS)
-00:803B 09C0            	    64:     ora #(RW | E)
-00:803D 8D0160          	    65:     sta PORTA
-                        	    66: .loopBusy:
-                        	    67:     ;; read busy flag
-00:8040 AD0060          	    68:     lda PORTB
-                        	    69:     ;; test busy bit
-00:8043 2980            	    70:     and #$80
-00:8045 D0F9            	    71:     bne .loopBusy
-                        	    72:     ;; restore port-B mode to output
-00:8047 A9FF            	    73:     lda #$ff
-00:8049 8D0260          	    74:     sta DDRB
-00:804C 68              	    75:     pla
-00:804D 60              	    76:     rts
-                        	    77: 
-                        	    78: lcd_instruction: ; A->()
-00:804E 203280          	    79:     jsr lcd_wait
-00:8051 8D0060          	    80:     sta PORTB
-00:8054 AD0160          	    81:     lda PORTA
-                        	    82:     ;; RS=0. RW=0, E=1
-00:8057 299F            	    83:     and #(~(RS | RW))
-00:8059 0980            	    84:     ora #E
-00:805B 8D0160          	    85:     sta PORTA
-                        	    86:     ;; trigger E neg-edge
-00:805E 4980            	    87:     eor #E
-00:8060 8D0160          	    88:     sta PORTA
-00:8063 60              	    89:     rts
-                        	    90: 
-                        	    91: lcd_emitChar: ; A->()
-00:8064 203280          	    92:     jsr lcd_wait
-00:8067 8D0060          	    93:     sta PORTB
-00:806A AD0160          	    94:     lda PORTA
-                        	    95:     ;; RS=1, RW=0, E=1
-00:806D 29BF            	    96:     and #(~RW)
-00:806F 09A0            	    97:     ora #(RS | E)
-00:8071 8D0160          	    98:     sta PORTA
-                        	    99:     ;; trigger E neg-edge
-00:8074 4980            	   100:     eor #E
-00:8076 8D0160          	   101:     sta PORTA
-00:8079 60              	   102:     rts
-                        	   103: 
-                        	   104: display_hex_nibble: ; A->()
-00:807A AA              	   105:     tax
-00:807B BD8280          	   106:     lda .hex_chars, x
-00:807E 206480          	   107:     jsr lcd_emitChar
-00:8081 60              	   108:     rts
-                        	   109: .hex_chars:
-00:8082 3031323334353637	   110:     ascii "0123456789abcdef"
+                        	    48:     include lcd.s
+
+Source: "lcd.s"
+                        	     1: 
+                        	     2: lcd_init:
+00:8022 A938            	     3:     lda #LCD_FunctionSet_8bit_2lines
+00:8024 204E80          	     4:     jsr lcd_instruction
+00:8027 A90C            	     5:     lda #LCD_DisplayOn_CursorOff
+00:8029 204E80          	     6:     jsr lcd_instruction
+00:802C A901            	     7:     lda #LCD_ClearDisplay
+00:802E 204E80          	     8:     jsr lcd_instruction
+00:8031 60              	     9:     rts
+                        	    10: 
+                        	    11: lcd_wait:
+00:8032 48              	    12:     pha
+                        	    13:     ;; set port-B mode to input
+00:8033 9C0260          	    14:     stz DDRB
+                        	    15:     ;; RS=0, RW=1, E=1
+00:8036 AD0160          	    16:     lda PORTA
+00:8039 29DF            	    17:     and #(~RS)
+00:803B 09C0            	    18:     ora #(RW | E)
+00:803D 8D0160          	    19:     sta PORTA
+                        	    20: .loopBusy:
+                        	    21:     ;; read busy flag
+00:8040 AD0060          	    22:     lda PORTB
+                        	    23:     ;; test busy bit
+00:8043 2980            	    24:     and #$80
+00:8045 D0F9            	    25:     bne .loopBusy
+                        	    26:     ;; restore port-B mode to output
+00:8047 A9FF            	    27:     lda #$ff
+00:8049 8D0260          	    28:     sta DDRB
+00:804C 68              	    29:     pla
+00:804D 60              	    30:     rts
+                        	    31: 
+                        	    32: lcd_instruction: ; A->()
+00:804E 203280          	    33:     jsr lcd_wait
+00:8051 8D0060          	    34:     sta PORTB
+00:8054 AD0160          	    35:     lda PORTA
+                        	    36:     ;; RS=0. RW=0, E=1
+00:8057 299F            	    37:     and #(~(RS | RW))
+00:8059 0980            	    38:     ora #E
+00:805B 8D0160          	    39:     sta PORTA
+                        	    40:     ;; trigger E neg-edge
+00:805E 4980            	    41:     eor #E
+00:8060 8D0160          	    42:     sta PORTA
+00:8063 60              	    43:     rts
+                        	    44: 
+                        	    45: lcd_emitChar: ; A->()
+00:8064 203280          	    46:     jsr lcd_wait
+00:8067 8D0060          	    47:     sta PORTB
+00:806A AD0160          	    48:     lda PORTA
+                        	    49:     ;; RS=1, RW=0, E=1
+00:806D 29BF            	    50:     and #(~RW)
+00:806F 09A0            	    51:     ora #(RS | E)
+00:8071 8D0160          	    52:     sta PORTA
+                        	    53:     ;; trigger E neg-edge
+00:8074 4980            	    54:     eor #E
+00:8076 8D0160          	    55:     sta PORTA
+00:8079 60              	    56:     rts
+                        	    57: 
+
+Source: "work.s"
+                        	    49: 
+                        	    50: display_hex_nibble: ; A->()
+00:807A AA              	    51:     tax
+00:807B BD8280          	    52:     lda .hex_chars, x
+00:807E 206480          	    53:     jsr lcd_emitChar
+00:8081 60              	    54:     rts
+                        	    55: .hex_chars:
+00:8082 3031323334353637	    56:     ascii "0123456789abcdef"
 00:808A 3839616263646566
-                        	   111: 
-                        	   112: display_hex_byte: ; A->()
-00:8092 48              	   113:     pha
-00:8093 4A              	   114:     lsr
-00:8094 4A              	   115:     lsr
-00:8095 4A              	   116:     lsr
-00:8096 4A              	   117:     lsr
-00:8097 207A80          	   118:     jsr display_hex_nibble
-00:809A 68              	   119:     pla
-00:809B 290F            	   120:     and #$f
-00:809D 207A80          	   121:     jsr display_hex_nibble
-00:80A0 60              	   122:     rts
-                        	   123: 
-                        	   124: ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                        	   125: 
-                        	   126: ;;; measure work getting done...
-                        	   127: ;;; 'work' is incrementing a counter; reset counter each second
-                        	   128: ;;; (main loop) display the time in seconds & the running counter
-                        	   129: ;;; explore calling display only every 1/5 second
-                        	   130: 
-                        	   131: jiffy = 20
-                        	   132: jiffy_last_second = 21
-                        	   133: jiffy_last_status = 22
-                        	   134: 
-                        	   135: counter = 23 ;; 3bytes (BCD
-                        	   136: seconds = 26 ;; 2bytes (BCD)
-                        	   137: 
-                        	   138: last_counter = 28 ;; 3bytes
-                        	   139: 
-                        	   140: reset:
-00:80A1 58              	   141:     cli ; enable IRQ
-00:80A2 6414            	   142:     stz jiffy
-00:80A4 6415            	   143:     stz jiffy_last_second
-00:80A6 200080          	   144:     jsr via_init
-00:80A9 202280          	   145:     jsr lcd_init
-00:80AC 201481          	   146:     jsr reset_counter
-00:80AF 201B81          	   147:     jsr reset_last_counter
-00:80B2 202281          	   148:     jsr reset_seconds
-                        	   149: .loop:
-                        	   150:     ;;jsr every_second
-                        	   151:     ;;jsr update_status_display
-00:80B5 202781          	   152:     jsr inc_counter
-00:80B8 4CB580          	   153:     jmp .loop
-                        	   154: 
-                        	   155: every_second:
-00:80BB 38              	   156:     sec
-00:80BC A514            	   157:     lda jiffy
-00:80BE E515            	   158:     sbc jiffy_last_second
-00:80C0 C964            	   159:     cmp #100
-00:80C2 900D            	   160:     bcc .no
-00:80C4 A514            	   161:     lda jiffy
-00:80C6 8515            	   162:     sta jiffy_last_second
-00:80C8 204381          	   163:     jsr inc_seconds
-00:80CB 200781          	   164:     jsr snap_counter
-00:80CE 201481          	   165:     jsr reset_counter
-                        	   166: .no:
-00:80D1 60              	   167:     rts
-                        	   168: 
-                        	   169: update_status_display:
-00:80D2 38              	   170:     sec
-00:80D3 A514            	   171:     lda jiffy
-00:80D5 E516            	   172:     sbc jiffy_last_status
-00:80D7 C90A            	   173:     cmp #10
-00:80D9 9007            	   174:     bcc .no
-00:80DB A514            	   175:     lda jiffy
-00:80DD 8516            	   176:     sta jiffy_last_status
-00:80DF 20E380          	   177:     jsr display_status_now
-                        	   178: .no:
-00:80E2 60              	   179:     rts
-                        	   180: 
-                        	   181: display_status_now:
-00:80E3 A902            	   182:     lda #LCD_ReturnHome
-00:80E5 204E80          	   183:     jsr lcd_instruction
-00:80E8 A51B            	   184:     lda seconds+1
-00:80EA 209280          	   185:     jsr display_hex_byte
-00:80ED A51A            	   186:     lda seconds
-00:80EF 209280          	   187:     jsr display_hex_byte
-00:80F2 A920            	   188:     lda #' '
-00:80F4 206480          	   189:     jsr lcd_emitChar
-00:80F7 A51E            	   190:     lda last_counter+2
-00:80F9 209280          	   191:     jsr display_hex_byte
-00:80FC A51D            	   192:     lda last_counter+1
-00:80FE 209280          	   193:     jsr display_hex_byte
-00:8101 A51C            	   194:     lda last_counter
-00:8103 209280          	   195:     jsr display_hex_byte
-00:8106 60              	   196:     rts
-                        	   197: 
-                        	   198: snap_counter:
-00:8107 A517            	   199:     lda counter
-00:8109 851C            	   200:     sta last_counter
-00:810B A518            	   201:     lda counter+1
-00:810D 851D            	   202:     sta last_counter+1
-00:810F A519            	   203:     lda counter+2
-00:8111 851E            	   204:     sta last_counter+2
-00:8113 60              	   205:     rts
-                        	   206: 
-                        	   207: reset_counter:
-00:8114 6417            	   208:     stz counter
-00:8116 6418            	   209:     stz counter+1
-00:8118 6419            	   210:     stz counter+2
-00:811A 60              	   211:     rts
-                        	   212: 
-                        	   213: reset_last_counter:
-00:811B 641C            	   214:     stz last_counter
-00:811D 641D            	   215:     stz last_counter+1
-00:811F 641E            	   216:     stz last_counter+2
-00:8121 60              	   217:     rts
-                        	   218: 
-                        	   219: reset_seconds:
-00:8122 641A            	   220:     stz seconds
-00:8124 641B            	   221:     stz seconds+1
-00:8126 60              	   222:     rts
-                        	   223: 
-                        	   224: inc_counter:
-00:8127 F8              	   225:     sed ; decimal
-00:8128 38              	   226:     sec
-00:8129 A517            	   227:     lda counter
-00:812B 6900            	   228:     adc #0
-00:812D 8517            	   229:     sta counter
-00:812F D010            	   230:     bne .done
-00:8131 38              	   231:     sec
-00:8132 A518            	   232:     lda counter+1
-00:8134 6900            	   233:     adc #0
-00:8136 8518            	   234:     sta counter+1
-00:8138 D007            	   235:     bne .done
-00:813A 38              	   236:     sec
-00:813B A519            	   237:     lda counter+2
-00:813D 6900            	   238:     adc #0
-00:813F 8519            	   239:     sta counter+2
-                        	   240: .done:
-00:8141 D8              	   241:     cld
-00:8142 60              	   242:     rts
-                        	   243: 
-                        	   244: inc_seconds:
-00:8143 F8              	   245:     sed ; decimal
-00:8144 38              	   246:     sec
-00:8145 A51A            	   247:     lda seconds
-00:8147 6900            	   248:     adc #0
-00:8149 851A            	   249:     sta seconds
-00:814B D007            	   250:     bne .done
-00:814D 38              	   251:     sec
-00:814E A51B            	   252:     lda seconds+1
-00:8150 6900            	   253:     adc #0
-00:8152 851B            	   254:     sta seconds+1
-                        	   255: .done:
-00:8154 D8              	   256:     cld
-00:8155 60              	   257:     rts
-                        	   258: 
-                        	   259: irq:
-00:8156 48              	   260:     pha
-00:8157 2C0D60          	   261:     bit IFR
-00:815A 7003            	   262:     bvs .timer1
-00:815C 4C6C81          	   263:     jmp .done
-                        	   264: .timer1:
-00:815F A940            	   265:     lda #%01000000
-00:8161 8D0D60          	   266:     sta IFR
-00:8164 E614            	   267:     inc jiffy
-00:8166 20BB80          	   268:     jsr every_second
-00:8169 20D280          	   269:     jsr update_status_display
-                        	   270: .done:
-00:816C 68              	   271:     pla
-00:816D 40              	   272:     rti
-                        	   273: 
-                        	   274: nmi:
-00:816E 40              	   275:     rti
-                        	   276: 
-                        	   277:     org $fffa
-01:FFFA 6E81            	   278:     word nmi
-01:FFFC A180            	   279:     word reset
-01:FFFE 5681            	   280:     word irq
-                        	   281: 
+                        	    57: 
+                        	    58: display_hex_byte: ; A->()
+00:8092 48              	    59:     pha
+00:8093 4A              	    60:     lsr
+00:8094 4A              	    61:     lsr
+00:8095 4A              	    62:     lsr
+00:8096 4A              	    63:     lsr
+00:8097 207A80          	    64:     jsr display_hex_nibble
+00:809A 68              	    65:     pla
+00:809B 290F            	    66:     and #$f
+00:809D 207A80          	    67:     jsr display_hex_nibble
+00:80A0 60              	    68:     rts
+                        	    69: 
+                        	    70: ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                        	    71: 
+                        	    72: ;;; measure work getting done...
+                        	    73: ;;; 'work' is incrementing a counter; reset counter each second
+                        	    74: ;;; (main loop) display the time in seconds & the running counter
+                        	    75: ;;; explore calling display only every 1/5 second
+                        	    76: 
+                        	    77: jiffy = 20
+                        	    78: jiffy_last_second = 21
+                        	    79: jiffy_last_status = 22
+                        	    80: 
+                        	    81: counter = 23 ;; 3bytes (BCD
+                        	    82: seconds = 26 ;; 2bytes (BCD)
+                        	    83: 
+                        	    84: last_counter = 28 ;; 3bytes
+                        	    85: 
+                        	    86: reset:
+00:80A1 58              	    87:     cli ; enable IRQ
+00:80A2 6414            	    88:     stz jiffy
+00:80A4 6415            	    89:     stz jiffy_last_second
+00:80A6 200080          	    90:     jsr via_init
+00:80A9 202280          	    91:     jsr lcd_init
+00:80AC 201481          	    92:     jsr reset_counter
+00:80AF 201B81          	    93:     jsr reset_last_counter
+00:80B2 202281          	    94:     jsr reset_seconds
+                        	    95: .loop:
+                        	    96:     ;;jsr every_second
+                        	    97:     ;;jsr update_status_display
+00:80B5 202781          	    98:     jsr inc_counter
+00:80B8 4CB580          	    99:     jmp .loop
+                        	   100: 
+                        	   101: every_second:
+00:80BB 38              	   102:     sec
+00:80BC A514            	   103:     lda jiffy
+00:80BE E515            	   104:     sbc jiffy_last_second
+00:80C0 C964            	   105:     cmp #100
+00:80C2 900D            	   106:     bcc .no
+00:80C4 A514            	   107:     lda jiffy
+00:80C6 8515            	   108:     sta jiffy_last_second
+00:80C8 204381          	   109:     jsr inc_seconds
+00:80CB 200781          	   110:     jsr snap_counter
+00:80CE 201481          	   111:     jsr reset_counter
+                        	   112: .no:
+00:80D1 60              	   113:     rts
+                        	   114: 
+                        	   115: update_status_display:
+00:80D2 38              	   116:     sec
+00:80D3 A514            	   117:     lda jiffy
+00:80D5 E516            	   118:     sbc jiffy_last_status
+00:80D7 C90A            	   119:     cmp #10
+00:80D9 9007            	   120:     bcc .no
+00:80DB A514            	   121:     lda jiffy
+00:80DD 8516            	   122:     sta jiffy_last_status
+00:80DF 20E380          	   123:     jsr display_status_now
+                        	   124: .no:
+00:80E2 60              	   125:     rts
+                        	   126: 
+                        	   127: display_status_now:
+00:80E3 A902            	   128:     lda #LCD_ReturnHome
+00:80E5 204E80          	   129:     jsr lcd_instruction
+00:80E8 A51B            	   130:     lda seconds+1
+00:80EA 209280          	   131:     jsr display_hex_byte
+00:80ED A51A            	   132:     lda seconds
+00:80EF 209280          	   133:     jsr display_hex_byte
+00:80F2 A920            	   134:     lda #' '
+00:80F4 206480          	   135:     jsr lcd_emitChar
+00:80F7 A51E            	   136:     lda last_counter+2
+00:80F9 209280          	   137:     jsr display_hex_byte
+00:80FC A51D            	   138:     lda last_counter+1
+00:80FE 209280          	   139:     jsr display_hex_byte
+00:8101 A51C            	   140:     lda last_counter
+00:8103 209280          	   141:     jsr display_hex_byte
+00:8106 60              	   142:     rts
+                        	   143: 
+                        	   144: snap_counter:
+00:8107 A517            	   145:     lda counter
+00:8109 851C            	   146:     sta last_counter
+00:810B A518            	   147:     lda counter+1
+00:810D 851D            	   148:     sta last_counter+1
+00:810F A519            	   149:     lda counter+2
+00:8111 851E            	   150:     sta last_counter+2
+00:8113 60              	   151:     rts
+                        	   152: 
+                        	   153: reset_counter:
+00:8114 6417            	   154:     stz counter
+00:8116 6418            	   155:     stz counter+1
+00:8118 6419            	   156:     stz counter+2
+00:811A 60              	   157:     rts
+                        	   158: 
+                        	   159: reset_last_counter:
+00:811B 641C            	   160:     stz last_counter
+00:811D 641D            	   161:     stz last_counter+1
+00:811F 641E            	   162:     stz last_counter+2
+00:8121 60              	   163:     rts
+                        	   164: 
+                        	   165: reset_seconds:
+00:8122 641A            	   166:     stz seconds
+00:8124 641B            	   167:     stz seconds+1
+00:8126 60              	   168:     rts
+                        	   169: 
+                        	   170: inc_counter:
+00:8127 F8              	   171:     sed ; decimal
+00:8128 38              	   172:     sec
+00:8129 A517            	   173:     lda counter
+00:812B 6900            	   174:     adc #0
+00:812D 8517            	   175:     sta counter
+00:812F D010            	   176:     bne .done
+00:8131 38              	   177:     sec
+00:8132 A518            	   178:     lda counter+1
+00:8134 6900            	   179:     adc #0
+00:8136 8518            	   180:     sta counter+1
+00:8138 D007            	   181:     bne .done
+00:813A 38              	   182:     sec
+00:813B A519            	   183:     lda counter+2
+00:813D 6900            	   184:     adc #0
+00:813F 8519            	   185:     sta counter+2
+                        	   186: .done:
+00:8141 D8              	   187:     cld
+00:8142 60              	   188:     rts
+                        	   189: 
+                        	   190: inc_seconds:
+00:8143 F8              	   191:     sed ; decimal
+00:8144 38              	   192:     sec
+00:8145 A51A            	   193:     lda seconds
+00:8147 6900            	   194:     adc #0
+00:8149 851A            	   195:     sta seconds
+00:814B D007            	   196:     bne .done
+00:814D 38              	   197:     sec
+00:814E A51B            	   198:     lda seconds+1
+00:8150 6900            	   199:     adc #0
+00:8152 851B            	   200:     sta seconds+1
+                        	   201: .done:
+00:8154 D8              	   202:     cld
+00:8155 60              	   203:     rts
+                        	   204: 
+                        	   205: irq:
+00:8156 48              	   206:     pha
+00:8157 2C0D60          	   207:     bit IFR
+00:815A 7003            	   208:     bvs .timer1
+00:815C 4C6C81          	   209:     jmp .done
+                        	   210: .timer1:
+00:815F A940            	   211:     lda #%01000000
+00:8161 8D0D60          	   212:     sta IFR
+00:8164 E614            	   213:     inc jiffy
+00:8166 20BB80          	   214:     jsr every_second
+00:8169 20D280          	   215:     jsr update_status_display
+                        	   216: .done:
+00:816C 68              	   217:     pla
+00:816D 40              	   218:     rti
+                        	   219: 
+                        	   220: nmi:
+00:816E 40              	   221:     rti
+                        	   222: 
+                        	   223:     org $fffa
+01:FFFA 6E81            	   224:     word nmi
+01:FFFC A180            	   225:     word reset
+01:FFFE 5681            	   226:     word irq
+                        	   227: 
 
 
 Symbols by name:
