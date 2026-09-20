@@ -19,7 +19,16 @@ LCD_FunctionSet_8bit_2lines    = %00111000
 
     include lcd.s
 
+via_init:
+    ;; set all pins on port-B as output
+    lda #%11111111
+    sta DDRB
+    ;; set most significant 3 pins on port-A as output
+    lda #%11100000
+    rts
+
 reset:
+    jsr via_init
     jsr lcd_init
 
     ldx #0

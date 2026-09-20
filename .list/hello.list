@@ -1,5 +1,5 @@
 Sections:
-00: "org0001:8000" (8000-8088)
+00: "org0001:8000" (8000-808C)
 01: "org0002:fffc" (FFFC-0)
 
 
@@ -28,94 +28,98 @@ Source: "hello.s"
 Source: "lcd.s"
                         	     1: 
                         	     2: lcd_init:
-                        	     3:     ;; set all pins on port-B as output
-00:8000 A9FF            	     4:     lda #%11111111
-00:8002 8D0260          	     5:     sta DDRB
-                        	     6:     ;; set most significant 3 pins on port-A as output
-00:8005 A9E0            	     7:     lda #%11100000
-00:8007 8D0360          	     8:     sta DDRA
-00:800A A938            	     9:     lda #LCD_FunctionSet_8bit_2lines
-00:800C 203A80          	    10:     jsr lcd_instruction
-00:800F A90E            	    11:     lda #LCD_DisplayOn_CursorOn_NoBlink
-00:8011 203A80          	    12:     jsr lcd_instruction
-                        	    13:     ;;lda #LCD_ReturnHome
-00:8014 A901            	    14:     lda #LCD_ClearDisplay
-00:8016 203A80          	    15:     jsr lcd_instruction
-                        	    16: 
-                        	    17: lcd_wait:
-00:8019 48              	    18:     pha
-                        	    19: .loop:
-                        	    20:     ;; set port-B mode to input
-00:801A 9C0260          	    21:     stz DDRB
-                        	    22:     ;; read busy flag
-00:801D A940            	    23:     lda #RW
-00:801F 8D0160          	    24:     sta PORTA
-00:8022 A9C0            	    25:     lda #(RW | E)
-00:8024 8D0160          	    26:     sta PORTA
-00:8027 AD0060          	    27:     lda PORTB
-                        	    28:     ;; test busy bit
-00:802A 2980            	    29:     and #$80
-00:802C D0EC            	    30:     bne .loop
-00:802E A940            	    31:     lda #RW
-00:8030 8D0160          	    32:     sta PORTA
-                        	    33:     ;; restore port-B mode to output
-00:8033 A9FF            	    34:     lda #$ff
-00:8035 8D0260          	    35:     sta DDRB
-00:8038 68              	    36:     pla
-00:8039 60              	    37:     rts
-                        	    38: 
-                        	    39: lcd_instruction:
-00:803A 201980          	    40:     jsr lcd_wait
-00:803D 8D0060          	    41:     sta PORTB
-00:8040 A900            	    42:     lda #0
-00:8042 8D0160          	    43:     sta PORTA
-00:8045 A980            	    44:     lda #E
-00:8047 8D0160          	    45:     sta PORTA
-00:804A A900            	    46:     lda #0
-00:804C 8D0160          	    47:     sta PORTA
-00:804F 60              	    48:     rts
-                        	    49: 
-                        	    50: lcd_emitChar:
-00:8050 201980          	    51:     jsr lcd_wait
-00:8053 8D0060          	    52:     sta PORTB
-00:8056 A920            	    53:     lda #RS
-00:8058 8D0160          	    54:     sta PORTA
-00:805B A9A0            	    55:     lda #(RS | E)
-00:805D 8D0160          	    56:     sta PORTA
-00:8060 A920            	    57:     lda #RS
-00:8062 8D0160          	    58:     sta PORTA
-00:8065 60              	    59:     rts
-                        	    60: 
+00:8000 8D0360          	     3:     sta DDRA
+00:8003 A938            	     4:     lda #LCD_FunctionSet_8bit_2lines
+00:8005 203380          	     5:     jsr lcd_instruction
+00:8008 A90E            	     6:     lda #LCD_DisplayOn_CursorOn_NoBlink
+00:800A 203380          	     7:     jsr lcd_instruction
+                        	     8:     ;;lda #LCD_ReturnHome
+00:800D A901            	     9:     lda #LCD_ClearDisplay
+00:800F 203380          	    10:     jsr lcd_instruction
+                        	    11: 
+                        	    12: lcd_wait:
+00:8012 48              	    13:     pha
+                        	    14: .loop:
+                        	    15:     ;; set port-B mode to input
+00:8013 9C0260          	    16:     stz DDRB
+                        	    17:     ;; read busy flag
+00:8016 A940            	    18:     lda #RW
+00:8018 8D0160          	    19:     sta PORTA
+00:801B A9C0            	    20:     lda #(RW | E)
+00:801D 8D0160          	    21:     sta PORTA
+00:8020 AD0060          	    22:     lda PORTB
+                        	    23:     ;; test busy bit
+00:8023 2980            	    24:     and #$80
+00:8025 D0EC            	    25:     bne .loop
+00:8027 A940            	    26:     lda #RW
+00:8029 8D0160          	    27:     sta PORTA
+                        	    28:     ;; restore port-B mode to output
+00:802C A9FF            	    29:     lda #$ff
+00:802E 8D0260          	    30:     sta DDRB
+00:8031 68              	    31:     pla
+00:8032 60              	    32:     rts
+                        	    33: 
+                        	    34: lcd_instruction:
+00:8033 201280          	    35:     jsr lcd_wait
+00:8036 8D0060          	    36:     sta PORTB
+00:8039 A900            	    37:     lda #0
+00:803B 8D0160          	    38:     sta PORTA
+00:803E A980            	    39:     lda #E
+00:8040 8D0160          	    40:     sta PORTA
+00:8043 A900            	    41:     lda #0
+00:8045 8D0160          	    42:     sta PORTA
+00:8048 60              	    43:     rts
+                        	    44: 
+                        	    45: lcd_emitChar:
+00:8049 201280          	    46:     jsr lcd_wait
+00:804C 8D0060          	    47:     sta PORTB
+00:804F A920            	    48:     lda #RS
+00:8051 8D0160          	    49:     sta PORTA
+00:8054 A9A0            	    50:     lda #(RS | E)
+00:8056 8D0160          	    51:     sta PORTA
+00:8059 A920            	    52:     lda #RS
+00:805B 8D0160          	    53:     sta PORTA
+00:805E 60              	    54:     rts
+                        	    55: 
 
 Source: "hello.s"
                         	    21: 
-                        	    22: reset:
-00:8066 200080          	    23:     jsr lcd_init
-                        	    24: 
-00:8069 A200            	    25:     ldx #0
-                        	    26: .nextMessageChar:
-00:806B BD7A80          	    27:     lda message, x
-00:806E F007            	    28:     beq .done
-00:8070 205080          	    29:     jsr lcd_emitChar
-00:8073 E8              	    30:     inx
-00:8074 4C6B80          	    31:     jmp .nextMessageChar
-                        	    32: .done:
+                        	    22: via_init:
+                        	    23:     ;; set all pins on port-B as output
+00:805F A9FF            	    24:     lda #%11111111
+00:8061 8D0260          	    25:     sta DDRB
+                        	    26:     ;; set most significant 3 pins on port-A as output
+00:8064 A9E0            	    27:     lda #%11100000
+00:8066 60              	    28:     rts
+                        	    29: 
+                        	    30: reset:
+00:8067 205F80          	    31:     jsr via_init
+00:806A 200080          	    32:     jsr lcd_init
                         	    33: 
-                        	    34: finalHang:
-                        	    35:     ;;lda #LCD_DisplayShift_Left
-                        	    36:     ;;jsr lcd_instruction
-00:8077 4C7780          	    37:     jmp finalHang
-                        	    38: 
-                        	    39: message:
-00:807A 48656C6C6F2C2077	    40:     asciiz "Hello, world!"
-00:8082 6F726C6421
-00:8087 00
-                        	    41: 
-                        	    42:     org $fffc
-01:FFFC 6680            	    43:     word reset
-01:FFFE 0000            	    44:     word 0
-                        	    45: 
-                        	    46: 
+00:806D A200            	    34:     ldx #0
+                        	    35: .nextMessageChar:
+00:806F BD7E80          	    36:     lda message, x
+00:8072 F007            	    37:     beq .done
+00:8074 204980          	    38:     jsr lcd_emitChar
+00:8077 E8              	    39:     inx
+00:8078 4C6F80          	    40:     jmp .nextMessageChar
+                        	    41: .done:
+                        	    42: 
+                        	    43: finalHang:
+                        	    44:     ;;lda #LCD_DisplayShift_Left
+                        	    45:     ;;jsr lcd_instruction
+00:807B 4C7B80          	    46:     jmp finalHang
+                        	    47: 
+                        	    48: message:
+00:807E 48656C6C6F2C2077	    49:     asciiz "Hello, world!"
+00:8086 6F726C6421
+00:808B 00
+                        	    50: 
+                        	    51:     org $fffc
+01:FFFC 6780            	    52:     word reset
+01:FFFE 0000            	    53:     word 0
+                        	    54: 
+                        	    55: 
 
 
 Symbols by name:
@@ -129,13 +133,14 @@ PORTA                            E:6001
 PORTB                            E:6000
 RS                               E:0020
 RW                               E:0040
-finalHang                        A:8077
-lcd_emitChar                     A:8050
+finalHang                        A:807B
+lcd_emitChar                     A:8049
 lcd_init                         A:8000
-lcd_instruction                  A:803A
-lcd_wait                         A:8019
-message                          A:807A
-reset                            A:8066
+lcd_instruction                  A:8033
+lcd_wait                         A:8012
+message                          A:807E
+reset                            A:8067
+via_init                         A:805F
 
 Symbols by value:
 0001 LCD_ClearDisplay
@@ -149,9 +154,10 @@ Symbols by value:
 6002 DDRB
 6003 DDRA
 8000 lcd_init
-8019 lcd_wait
-803A lcd_instruction
-8050 lcd_emitChar
-8066 reset
-8077 finalHang
-807A message
+8012 lcd_wait
+8033 lcd_instruction
+8049 lcd_emitChar
+805F via_init
+8067 reset
+807B finalHang
+807E message
