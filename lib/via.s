@@ -12,9 +12,9 @@ PCR   = $600c ; peripheral control register (CA, CB)
 IFR   = $600d ; interrupt flag register
 IER   = $600e ; interrupt enable register
 
-E  = %10000000 ; enable
-RW = %01000000 ; read/write
-RS = %00100000 ; register select
+E  = %00001000 ; enable
+RW = %00000100 ; read/write
+RS = %00000010 ; register select
 
 LCD_ClearDisplay               = %00000001
 LCD_ReturnHome                 = %00000010
