@@ -12,7 +12,7 @@ lcd_init:
     ;; (from 8 bit mode) function set: 4 bit
     jsr lcd_wait
     lda #%00100000
-    jsr send_nibble_COMMAND
+    jsr send_nibble
 
     lda #LCD_FunctionSet_4bit_2lines
     jsr lcd_command
@@ -26,71 +26,55 @@ lcd_init:
     rts
 
 
-lcd_wait:
-    pha ; save caller's A
-
+lcd_wait: ; splats A
     jsr clear_RS
     jsr set_RW
     jsr set_enable
-
     lda #%00001111 ; temp set read for least-sig for pins of port-B
     sta DDRB
 .loop:
     lda PORTB
     and #$80
     bne .loop ; tight loop
-
     lda #$ff ; revert port-B to all-write
     sta DDRB
-
     jsr clear_enable
     jsr set_enable
     jsr clear_enable
-
-    pla ;; restore caller's A
     rts
 
 
 lcd_command: ; A->()
-    jsr lcd_wait
     pha
-    and #$f0 ; high-nibble
-    jsr send_nibble_COMMAND
-    pla
-    asl ; low-nibble (shifted to high-nibble position)
-    asl
-    asl
-    asl
-    jsr send_nibble_COMMAND
-    rts
-
-
-lcd_emitChar: ; A->()
     jsr lcd_wait
-    pha
-    and #$f0 ; high-nibble
-    jsr send_nibble_DATA
-    pla
-    asl ; low-nibble (shifted to high-nibble position)
-    asl
-    asl
-    asl
-    jsr send_nibble_DATA
-    rts
-
-
-send_nibble_DATA: ; A->()
-    jsr set_nibble
-    jsr set_RS
-    jsr clear_RW
-    jsr set_enable
-    jsr clear_enable ;; neg-edge
-    rts
-
-send_nibble_COMMAND: ; A->()
-    jsr set_nibble
     jsr clear_RS
     jsr clear_RW
+    pla
+    jmp send_hi_and_lo_nibbles
+
+lcd_emitChar: ; A->()
+    pha
+    jsr lcd_wait
+    jsr set_RS
+    jsr clear_RW
+    pla
+    jmp send_hi_and_lo_nibbles
+
+send_hi_and_lo_nibbles:
+    pha
+    and #$f0 ; high-nibble
+    jsr send_nibble
+    pla
+    asl ; low-nibble (shifted to high-nibble position)
+    asl
+    asl
+    asl
+    jsr send_nibble
+    rts
+
+
+send_nibble: ; A->()
+    jsr set_nibble
     jsr set_enable
     jsr clear_enable ;; neg-edge
     rts
@@ -98,24 +82,15 @@ send_nibble_COMMAND: ; A->()
 TEMP = 0
 
 set_nibble: ; A->()
-    and #%11110000
+    and #$f0 ; change high nibble only
     pha
-
     lda PORTB
-    and #%00001111
+    and #$0f ; preserve low nibble
     sta TEMP
-
     pla
     ora TEMP
     sta PORTB
     rts
-
-
-;; toggle_enable:
-;;     lda ENABLE_PORT
-;;     eor #(E)
-;;     sta ENABLE_PORT
-;;     rts
 
 set_enable:
     lda ENABLE_PORT
