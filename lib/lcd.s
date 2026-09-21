@@ -11,6 +11,8 @@ LCD_FunctionSet_4bit_2lines    = %00101000
 lcd_init:
     ;; (from 8 bit mode) function set: 4 bit
     jsr lcd_wait
+    jsr clear_RS
+    jsr clear_RW
     lda #%00100000
     jsr send_nibble
 
