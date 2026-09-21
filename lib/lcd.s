@@ -5,16 +5,21 @@ LCD_EntryMode_Inc_NoShift      = %00000110
 LCD_DisplayOn_CursorOff        = %00001100
 LCD_DisplayOn_CursorOn_NoBlink = %00001110
 LCD_DisplayShift_Left          = %00011000
-LCD_FunctionSet_8bit_2lines    = %00111000
 LCD_FunctionSet_4bit_2lines    = %00101000
 
+LCD_FunctionSet_4bit           = %00100000
+LCD_FunctionSet_8bit           = %00110000
+
 lcd_init:
-    ;; (from 8 bit mode) function set: 4 bit
-    jsr lcd_wait
-    jsr clear_RS
-    jsr clear_RW
-    lda #%00100000
-    jsr send_nibble
+    ;; An initialization sequence that works whatever state we are in.
+    lda #LCD_FunctionSet_8bit
+    jsr lcd_half_command
+    lda #LCD_FunctionSet_8bit
+    jsr lcd_half_command
+    lda #LCD_FunctionSet_8bit
+    jsr lcd_half_command
+    lda #LCD_FunctionSet_4bit
+    jsr lcd_half_command
 
     lda #LCD_FunctionSet_4bit_2lines
     jsr lcd_command
@@ -22,10 +27,37 @@ lcd_init:
     lda #LCD_DisplayOn_CursorOff
     jsr lcd_command
 
+    lda #LCD_ClearDisplay
+    jsr lcd_command
+
     ;; this is the default entry mode??
     lda #LCD_EntryMode_Inc_NoShift
     jsr lcd_command
     rts
+
+lcd_half_command: ; A->() ;; for use during initialization
+    pha
+    jsr lcd_wait
+    jsr clear_RS
+    jsr clear_RW
+    pla
+    jmp send_nibble
+
+lcd_command: ; A->()
+    pha
+    jsr lcd_wait
+    jsr clear_RS
+    jsr clear_RW
+    pla
+    jmp send_hi_and_lo_nibbles
+
+lcd_emitChar: ; A->()
+    pha
+    jsr lcd_wait
+    jsr set_RS
+    jsr clear_RW
+    pla
+    jmp send_hi_and_lo_nibbles
 
 
 lcd_wait: ; splats A
@@ -46,22 +78,6 @@ lcd_wait: ; splats A
     rts
 
 
-lcd_command: ; A->()
-    pha
-    jsr lcd_wait
-    jsr clear_RS
-    jsr clear_RW
-    pla
-    jmp send_hi_and_lo_nibbles
-
-lcd_emitChar: ; A->()
-    pha
-    jsr lcd_wait
-    jsr set_RS
-    jsr clear_RW
-    pla
-    jmp send_hi_and_lo_nibbles
-
 send_hi_and_lo_nibbles:
     pha
     and #$f0 ; high-nibble
@@ -71,8 +87,7 @@ send_hi_and_lo_nibbles:
     asl
     asl
     asl
-    jsr send_nibble
-    rts
+    jmp send_nibble
 
 
 send_nibble: ; A->()
