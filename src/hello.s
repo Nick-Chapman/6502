@@ -8,6 +8,9 @@ reset:
     jsr via_init
     jsr lcd_init
 
+    lda #LCD_ReturnHome
+    jsr lcd_command
+
     ldx #0
 .nextMessageChar:
     lda message, x

@@ -66,6 +66,10 @@ every_second:
     jsr inc_seconds
     jsr snap_counter
     jsr reset_counter
+
+    lda PORTB
+    eor #1 ; toggle LED
+    sta PORTB
 .no:
     rts
 
@@ -83,7 +87,8 @@ update_status_display:
 
 display_status_now:
     lda #LCD_ReturnHome
-    jsr lcd_instruction
+    jsr lcd_command
+
     lda seconds+1
     jsr display_hex_byte
     lda seconds

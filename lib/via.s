@@ -12,17 +12,14 @@ PCR   = $600c ; peripheral control register (CA, CB)
 IFR   = $600d ; interrupt flag register
 IER   = $600e ; interrupt enable register
 
-E  = %00001000 ; enable
-RW = %00000100 ; read/write
 RS = %00000010 ; register select
+RW = %00000100 ; read/write
+E  = %00001000 ; enable
 
-LCD_ClearDisplay               = %00000001
-LCD_ReturnHome                 = %00000010
-LCD_EntryMode_Inc_NoShift      = %00000110
-LCD_DisplayOn_CursorOff        = %00001100
-LCD_DisplayOn_CursorOn_NoBlink = %00001110
-LCD_DisplayShift_Left          = %00011000
-LCD_FunctionSet_8bit_2lines    = %00111000
+;;; switch back to B
+RS_PORT = PORTB
+RW_PORT = PORTB
+ENABLE_PORT = PORTB
 
 via_init:
     ;; set all pins on port-B and port-A as output
@@ -31,7 +28,8 @@ via_init:
     sta DDRA
     lda #%00000000 ; negative edge on any of CA1,CA2,CB1,CB2
     sta PCR
-    lda #%11000011 ; enable Timer1, CA1 and CA2
+    ;;lda #%11000011 ; enable Timer1, CA1 and CA2
+    lda #%11000000 ; enable just Timer1
     sta IER
     ;; Setup timer1
     lda #%01000000 ; timer-1 in free running mode
