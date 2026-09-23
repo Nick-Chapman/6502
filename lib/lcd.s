@@ -1,4 +1,13 @@
 
+RS = %00000010 ; register select
+RW = %00000100 ; read/write
+E  = %00001000 ; enable
+
+;;; switch back to B
+RS_PORT = PORTB
+RW_PORT = PORTB
+ENABLE_PORT = PORTB
+
 LCD_ClearDisplay               = %00000001
 LCD_ReturnHome                 = %00000010
 LCD_EntryMode_Inc_NoShift      = %00000110

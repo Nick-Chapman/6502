@@ -5,7 +5,6 @@
     include lcd.s
 
 reset:
-    jsr via_init
     jsr lcd_init
 
     ldx #0
