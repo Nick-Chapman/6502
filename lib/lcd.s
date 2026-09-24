@@ -62,11 +62,14 @@ lcd_command: ; A->()
 
 lcd_emitChar: ; A->()
     pha
+    pha
     jsr lcd_wait
     jsr set_RS
     jsr clear_RW
     pla
-    jmp send_hi_and_lo_nibbles
+    jsr send_hi_and_lo_nibbles
+    pla
+    rts
 
 
 lcd_wait: ; splats A
