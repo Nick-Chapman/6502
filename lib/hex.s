@@ -1,6 +1,6 @@
 
 display_hex_nibble: ; A->()
-    ;;phx -- TODO: so nicer as a debug routine
+    ;;phx ;; TODO: so nicer as a debug routine
     tax
     lda .hex_chars, x
     jsr lcd_emitChar

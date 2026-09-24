@@ -12,7 +12,69 @@
     include lcd.s
     include hex.s
 
-BOTTOM = 20
+    BOTTOM = 20
+
+spawn: macro A
+    phx
+    phy
+    jsr \A
+    ply
+    plx
+endmacro
+
+finish: macro
+    jmp finish_code
+endmacro
+
+finish_code:
+    tsx
+    cpx BOTTOM
+    beq .all_tasks_finished
+    rts
+.all_tasks_finished:
+    lda #'!'
+    jsr lcd_emitChar
+.spin:
+    jmp .spin
+
+yield: macro
+    phx
+    phy
+    jsr yield_code
+    ply
+    plx
+endmacro
+
+yield_code:
+
+    tsx
+    ldy BOTTOM
+
+    inx
+    iny
+    lda $100,x
+    sta $100,y
+
+    inx
+    iny
+    lda $100,x
+    sta $100,y
+
+    inx
+    iny
+    lda $100,x
+    sta $100,y
+
+    inx
+    iny
+    lda $100,x
+    sta $100,y
+
+    txs
+    sty BOTTOM
+
+    rts
+
 
 via_init:
     lda #%11111111
@@ -31,58 +93,29 @@ reset:
     lda #LCD_ClearDisplay
     jsr lcd_command
 
-    lda #'s' ;start
+    lda #'S' ;start
     jsr lcd_emitChar
-    jsr taskA ; spawn
-    jsr taskB ; spawn
-    rts
+    spawn taskA
+    spawn taskB
+    finish
 
 taskA:
-    lda #'x'
+    ldx #5 ;; x: 5,4,3,2,1
+.loop:
+    lda #'a'
     jsr lcd_emitChar
-    jsr yield
-    lda #'y'
-    jsr lcd_emitChar
-    jsr yield
-    lda #'z'
-    jsr lcd_emitChar
-    jsr finish
+    yield
+    dex
+    bne .loop
+    finish
 
 taskB:
-    lda #'1'
+    ldx #1 ;; x: 1,2,3,4,5,6,7,8
+.loop:
+    lda #'b'
     jsr lcd_emitChar
-    jsr yield
-    lda #'2'
-    jsr lcd_emitChar
-    jsr finish
-
-;;;TODO change finish so we jump to it. do it macro
-finish: ;; basically like rts, but checks for when all tasks are done
-    tsx
+    yield
     inx
-    inx
-    cpx BOTTOM
-    beq all_tasks_finished
-    txs
-    rts
-
-all_tasks_finished:
-    lda #'!'
-    jsr lcd_emitChar
-.spin:
-    jmp .spin
-
-yield: ;; MACRO for this
-    tsx
-    ldy BOTTOM
-    inx
-    iny
-    lda $100,x
-    sta $100,y
-    inx
-    iny
-    lda $100,x
-    sta $100,y
-    txs
-    sty BOTTOM
-    rts
+    cpx #8
+    bne .loop
+    finish
