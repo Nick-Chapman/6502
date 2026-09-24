@@ -1,8 +1,10 @@
 
 display_hex_nibble: ; A->()
+    ;;phx -- TODO: so nicer as a debug routine
     tax
     lda .hex_chars, x
     jsr lcd_emitChar
+    ;;plx
     rts
 .hex_chars:
     ascii "0123456789abcdef"
