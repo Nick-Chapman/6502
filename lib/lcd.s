@@ -76,13 +76,13 @@ lcd_wait: ; splats A
     jsr clear_RS
     jsr set_RW
     jsr set_enable
-    lda #%00001111 ; temp set read for least-sig for pins of port-B
+    lda #%00001110 ; temp set read for least-sig for pins of port-B. TODO: fix
     sta DDRB
 .loop:
     lda PORTB
     and #$80
     bne .loop ; tight loop
-    lda #$ff ; revert port-B to all-write
+    lda #$fe ; revert port-B to all-write - NO, bit-0 is not out to meddle with. TODO fix
     sta DDRB
     jsr clear_enable
     jsr set_enable
