@@ -17,6 +17,7 @@
     scancode = 23
     screen_offset = 24
     ignore_following_release = 25
+    upper_case = 26
 
 init_globals:
     stz count
@@ -25,6 +26,7 @@ init_globals:
     stz scancode
     stz screen_offset
     stz ignore_following_release
+    stz upper_case
     rts
 
 screen_putChar: ; wrap around a single line; TODO better
@@ -84,23 +86,25 @@ screen_hex_byte: ; copy/mod from hex.s
     jsr screen_hex_nibble
     rts
 
-table:   ; 0123456789abcdef
+lower:   ; 0123456789abcdef
     ascii "                " ;0
     ascii "     q1   zsaw2 " ;1
-    ascii " cxde43   vftr5 " ;2
+    ascii "`cxde43   vftr5 " ;2
     ascii " nbhgy6   mju78 " ;3
     ascii " ,kio09  ./l;p- " ;4
     ascii "  ' [=     ] #  " ;5
     ascii " \              " ;6
     ascii "                " ;7
-    ascii "                " ;8
-    ascii "                " ;9
-    ascii "                " ;a
-    ascii "                " ;b
-    ascii "                " ;c
-    ascii "                " ;d
-    ascii "                " ;e
-    ascii "                " ;f
+
+upper:
+    ascii "                " ;0
+    ascii "     Q!   ZSAW@ " ;1
+    ascii "~CXDE$#   VFTR% " ;2
+    ascii " NBHGY^   MJU&* " ;3
+    ascii " <KIO)(  >?L:P_ " ;4
+    ascii "  @ {+     } ~  " ;5
+    ascii " |              " ;6
+    ascii "                " ;7
 
 display_scanCore:   ;; global
     lda ignore_following_release
@@ -109,25 +113,42 @@ display_scanCore:   ;; global
     rts
 .dont_ignore:
 
-    ldx scancode
+    lda scancode
 
-    cpx #$f0
+    cmp #$f0
     beq .release
-    cpx #$29
+
+    cmp #$58
+    beq .caps_lock
+    cmp #$29
     beq .space
 
-    lda table,x
+    ldx scancode
+    bmi .unknown ; >$7f
+
+    lda upper_case
+    and #1
+    bne .read_upper
+.read_lower:
+    lda lower,x
+    jmp .after_read
+.read_upper:
+    lda upper,x
+    jmp .after_read
+.after_read:
     cmp #' '
     beq .unknown
     jmp .ascii
 .release:
     inc ignore_following_release
     rts
+.caps_lock:
+    inc upper_case
+    rts
 .unknown:
-    phx
     lda #'{'
     jsr screen_putChar
-    pla
+    lda scancode
     jsr screen_hex_byte
     lda #'}'
     jsr screen_putChar
