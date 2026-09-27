@@ -50,7 +50,6 @@ screen_putChar:
     lda #LCD_ClearDisplay
     jsr lcd_command
     jmp .char
-    jmp .char
 .char:
     pla
     jsr lcd_emitChar
@@ -64,8 +63,6 @@ screen_putChar:
 .done:
     rts
 
-emit24:
-    rts
 
 screen_hex_nibble: ; copy/mod from hex.s
     phx
