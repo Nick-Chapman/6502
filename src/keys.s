@@ -40,7 +40,7 @@ via_init:
     sta IER
     rts
 
-screen_putChar: ; wrap around a single line; TODO better
+screen_putChar:
     pha
     lda screen_offset
     and #$1f
