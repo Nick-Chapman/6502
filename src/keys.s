@@ -59,16 +59,8 @@ screen_putChar: ; wrap around a single line; TODO better
     lda screen_offset
     and #$f
     bne .done
-    phx
-    ;; position to the start of the next line by emiting 24 off screen chars
-    ;; TODO use positionig commands
-    ldx #24
-.loop:
-    lda #'*'
-    jsr lcd_emitChar
-    dex
-    bne .loop
-    plx
+    lda #LCD_SetAddressStartLineTwo
+    jsr lcd_command
 .done:
     rts
 
