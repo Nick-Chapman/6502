@@ -15,16 +15,18 @@
     incoming = 21
     ready_scanCode = 22
     scancode = 23
-    screen_offset = 24
-    seen_release = 25
-    upper_case = 26
+    screen_insert_offset = 24
+    screen_display_offset = 25
+    seen_release = 26
+    upper_case = 27
 
 init_globals:
     stz count
     stz incoming
     stz ready_scanCode
     stz scancode
-    stz screen_offset
+    stz screen_insert_offset
+    stz screen_display_offset
     stz seen_release
     stz upper_case
     rts
@@ -40,29 +42,98 @@ via_init:
     sta IER
     rts
 
-screen_putChar:
-    pha
-    lda screen_offset
-    and #$1f
-    beq .cls
-    jmp .char
-.cls:
-    lda #LCD_ClearDisplay
-    jsr lcd_command
-    jmp .char
-.char:
-    pla
-    jsr lcd_emitChar
-    inc screen_offset
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    lda screen_offset
-    and #$f
-    bne .done
-    lda #LCD_SetAddressStartLineTwo
-    jsr lcd_command
-.done:
+screen_buffer = $200 ; 256 bytes
+
+screen_init:
+    ldx #0
+    lda #' '
+.loop:
+    dex
+    sta screen_buffer,x
+    bne .loop
     rts
 
+screen_refresh:
+    pha
+    phx
+    phy
+    lda #LCD_ReturnHome
+    jsr lcd_command
+
+    ldx screen_display_offset
+    ldy #16
+.line1:
+    lda screen_buffer,x
+    jsr lcd_emitChar
+    inx
+    dey
+    bne .line1
+
+    lda #LCD_SetAddressStartLineTwo
+    jsr lcd_command
+    ldy #16
+.line2:
+    lda screen_buffer,x
+    jsr lcd_emitChar
+    inx
+    dey
+    bne .line2
+
+    ply
+    plx
+    pla
+    rts
+
+screen_putChar_raw: ; A
+    phx
+    ldx screen_insert_offset
+    sta screen_buffer, x
+
+    inc screen_insert_offset
+
+    lda screen_insert_offset
+    sec
+    sbc screen_display_offset
+    cmp #32
+    bmi .nope
+    clc
+    lda screen_display_offset
+    adc #16
+    sta screen_display_offset
+.nope:
+    plx
+    rts
+
+screen_putChar: ; A
+    jsr screen_putChar_raw
+    jsr screen_refresh ;; TODO: move to separate task executed on a timer
+    rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; screen_putChar:
+;;     pha
+;;     lda screen_offset
+;;     and #$1f
+;;     beq .cls
+;;     jmp .char
+;; .cls:
+;;     lda #LCD_ClearDisplay
+;;     jsr lcd_command
+;;     jmp .char
+;; .char:
+;;     pla
+;;     jsr lcd_emitChar
+;;     inc screen_offset
+;;     lda screen_offset
+;;     and #$f
+;;     bne .done
+;;     lda #LCD_SetAddressStartLineTwo
+;;     jsr lcd_command
+;; .done:
+;;     rts
 
 screen_hex_nibble: ; copy/mod from hex.s
     phx
@@ -179,6 +250,7 @@ reset:
     jsr init_globals
     jsr via_init
     jsr lcd_init
+    jsr screen_init
 .loop:
     lda ready_scanCode
     beq .loop
