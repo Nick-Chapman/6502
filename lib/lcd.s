@@ -33,7 +33,7 @@ lcd_init:
     lda #LCD_FunctionSet_4bit_2lines
     jsr lcd_command
 
-    lda #LCD_DisplayOn_CursorOff
+    lda #LCD_DisplayOn_CursorOn_NoBlink
     jsr lcd_command
 
     lda #LCD_ClearDisplay
