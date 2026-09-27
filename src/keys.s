@@ -16,7 +16,7 @@
     ready_scanCode = 22
     scancode = 23
     screen_offset = 24
-    ignore_following_release = 25
+    seen_release = 25
     upper_case = 26
 
 init_globals:
@@ -25,8 +25,19 @@ init_globals:
     stz ready_scanCode
     stz scancode
     stz screen_offset
-    stz ignore_following_release
+    stz seen_release
     stz upper_case
+    rts
+
+via_init:
+    lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
+    sta DDRB
+    lda #0 ; no latching
+    sta ACR
+    lda #0
+    sta PCR ; active edge negative
+    lda #%10010000 ; enable CB1
+    sta IER
     rts
 
 screen_putChar: ; wrap around a single line; TODO better
@@ -106,29 +117,47 @@ upper:
     ascii " |              " ;6
     ascii "                " ;7
 
-display_scanCore:   ;; global
-    lda ignore_following_release
-    beq .dont_ignore
-    dec ignore_following_release
+display_scancode: ;A-> (uses X)
+    pha
+    lda seen_release
+    beq .not_release
+    dec seen_release
+    pla ; scancode
+    cmp #$12
+    beq .release_shift
+    cmp #$59
+    beq .release_shift
+    ; ignore any other release
     rts
-.dont_ignore:
-
-    lda scancode
-
+.release_shift:
+    stz upper_case
+    rts
+.not_release:
+    pla ;scancode
     cmp #$f0
     beq .release
-
-    cmp #$58
-    beq .caps_lock
+    cmp #$12
+    beq .shift
+    cmp #$59
+    beq .shift
     cmp #$29
     beq .space
-
-    ldx scancode
+    tax ;scancode
     bmi .unknown ; >$7f
-
     lda upper_case
-    and #1
     bne .read_upper
+    jmp .read_lower
+.release:
+    inc seen_release
+    jmp .done
+.shift:
+    lda upper_case
+    beq .shift_to_upper
+    ; already upper case; no change
+    jmp .done
+.shift_to_upper:
+    inc upper_case
+    jmp .done
 .read_lower:
     lda lower,x
     jmp .after_read
@@ -139,34 +168,19 @@ display_scanCore:   ;; global
     cmp #' '
     beq .unknown
     jmp .ascii
-.release:
-    inc ignore_following_release
-    rts
-.caps_lock:
-    inc upper_case
-    rts
 .unknown:
     lda #'{'
     jsr screen_putChar
-    lda scancode
+    txa ;scancode
     jsr screen_hex_byte
     lda #'}'
     jsr screen_putChar
-    rts
+    jmp .done
 .space:
     lda #' '
 .ascii:
-    jmp screen_putChar ; tail
-
-via_init:
-    lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
-    sta DDRB
-    lda #0 ; no latching
-    sta ACR
-    lda #0
-    sta PCR ; active edge negative
-    lda #%10010000 ; enable CB1
-    sta IER
+    jsr screen_putChar
+.done:
     rts
 
 reset:
@@ -180,7 +194,8 @@ reset:
     lda ready_scanCode
     beq .loop
     stz ready_scanCode
-    jsr display_scanCore
+    lda scancode
+    jsr display_scancode
     Jmp .loop
 
 irq:
