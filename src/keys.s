@@ -8,8 +8,6 @@
 
     include via.s
     include lcd.s
-    ;include hex.s ;; NOP, use screen routines here instead
-
 
     count = 20
     incoming = 21
@@ -83,7 +81,7 @@ screen_refresh:
 
     lda screen_insert_offset
     cmp screen_display_offset
-    bmi .done ;; insert port is outside/above display portal
+    bmi .done ;; insert-offset is outside/above display portal
     ;; insert point is below start of display
     sec
     lda screen_insert_offset
@@ -92,7 +90,7 @@ screen_refresh:
     bmi .line1_cursor
     cmp #32
     bmi .line2_cursor
-    ;; insert point is outside/below display portal
+    ;; insert-offset is outside/below display portal
     jmp .done
 .line1_cursor:
     lda screen_insert_offset
@@ -112,23 +110,57 @@ screen_refresh:
     pla
     rts
 
-screen_putChar: ; A
-    phx
-    ldx screen_insert_offset
-    sta screen_buffer, x
-
-    inc screen_insert_offset
-
+screen_reposition: ;; TODO: handle upward scroll & more general reposition
     lda screen_insert_offset
     sec
     sbc screen_display_offset
     cmp #32
-    bmi .nope
+    bmi .done
     clc
     lda screen_display_offset
     adc #16
     sta screen_display_offset
-.nope:
+.done:
+    rts
+
+screen_left1:
+    dec screen_insert_offset
+    jmp screen_reposition
+screen_right1:
+    inc screen_insert_offset
+    jmp screen_reposition
+screen_up1:
+    lda screen_insert_offset
+    sec
+    sbc #16
+    sta screen_insert_offset
+    jmp screen_reposition
+screen_down1:
+    lda screen_insert_offset
+    clc
+    adc #16
+    sta screen_insert_offset
+    jmp screen_reposition
+
+screen_enter:
+    lda #$f0 ;; TODO: use bit test and reset opcode?
+    and screen_insert_offset
+    sta screen_insert_offset
+    jmp screen_down1
+
+screen_putChar: ; A
+    phx
+    ldx screen_insert_offset
+    sta screen_buffer, x
+    plx
+    jmp screen_right1
+
+screen_backspace:
+    jsr screen_left1
+    lda #' '
+    phx
+    ldx screen_insert_offset
+    sta screen_buffer, x
     plx
     rts
 
@@ -201,6 +233,18 @@ display_scancode: ;A-> (uses X)
     beq .shift
     cmp #$29
     beq .space
+    cmp #$75
+    beq .up_arrow
+    cmp #$72
+    beq .down_arrow
+    cmp #$6b
+    beq .left_arrow
+    cmp #$74
+    beq .right_arrow
+    cmp #$5a
+    beq .enter
+    cmp #$66
+    beq .backspace
     tax ;scancode
     bmi .unknown ; >$7f
     lda upper_case
@@ -220,6 +264,20 @@ display_scancode: ;A-> (uses X)
 .shift_to_upper:
     inc upper_case
     rts
+
+.up_arrow:
+    jmp screen_up1
+.down_arrow:
+    jmp screen_down1
+.left_arrow:
+    jmp screen_left1
+.right_arrow:
+    jmp screen_right1
+.enter:
+    jmp screen_enter
+.backspace:
+    jmp screen_backspace
+
 .read_lower:
     lda lower,x
     jmp .after_read
