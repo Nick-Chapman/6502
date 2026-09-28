@@ -86,7 +86,7 @@ screen_refresh:
     pla
     rts
 
-screen_putChar_raw: ; A
+screen_putChar: ; A
     phx
     ldx screen_insert_offset
     sta screen_buffer, x
@@ -105,35 +105,6 @@ screen_putChar_raw: ; A
 .nope:
     plx
     rts
-
-screen_putChar: ; A
-    jsr screen_putChar_raw
-    jsr screen_refresh ;; TODO: move to separate task executed on a timer
-    rts
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; screen_putChar:
-;;     pha
-;;     lda screen_offset
-;;     and #$1f
-;;     beq .cls
-;;     jmp .char
-;; .cls:
-;;     lda #LCD_ClearDisplay
-;;     jsr lcd_command
-;;     jmp .char
-;; .char:
-;;     pla
-;;     jsr lcd_emitChar
-;;     inc screen_offset
-;;     lda screen_offset
-;;     and #$f
-;;     bne .done
-;;     lda #LCD_SetAddressStartLineTwo
-;;     jsr lcd_command
-;; .done:
-;;     rts
 
 screen_hex_nibble: ; copy/mod from hex.s
     phx
@@ -194,6 +165,8 @@ display_scancode: ;A-> (uses X)
     rts
 .not_release:
     pla ;scancode
+    cmp #$e0
+    beq .extended
     cmp #$f0
     beq .release
     cmp #$12
@@ -207,17 +180,20 @@ display_scancode: ;A-> (uses X)
     lda upper_case
     bne .read_upper
     jmp .read_lower
+.extended:
+    ;; just ignore the extended-prefix
+    rts
 .release:
     inc seen_release
-    jmp .done
+    rts
 .shift:
     lda upper_case
     beq .shift_to_upper
     ; already upper case; no change
-    jmp .done
+    rts
 .shift_to_upper:
     inc upper_case
-    jmp .done
+    rts
 .read_lower:
     lda lower,x
     jmp .after_read
@@ -235,7 +211,7 @@ display_scancode: ;A-> (uses X)
     jsr screen_hex_byte
     lda #'}'
     jsr screen_putChar
-    jmp .done
+    rts
 .space:
     lda #' '
 .ascii:
@@ -257,6 +233,7 @@ reset:
     stz ready_scanCode
     lda scancode
     jsr display_scancode
+    jsr screen_refresh ;; TODO: move to separate task executed on a timer
     Jmp .loop
 
 irq:
@@ -279,10 +256,18 @@ irq:
     jmp .done
 
 .nine:
+    lda ready_scanCode
+    bne .too_slow
     lda incoming
     sta scancode
     inc ready_scanCode
     jmp .done
+
+.too_slow:
+    lda #'#'
+    jsr screen_putChar
+.spin:
+    jmp .spin
 
 .eleven:
     stz count
