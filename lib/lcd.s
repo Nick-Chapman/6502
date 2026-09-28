@@ -15,6 +15,7 @@ LCD_DisplayOn_CursorOff        = %00001100
 LCD_DisplayOn_CursorOn_NoBlink = %00001110
 LCD_DisplayShift_Left          = %00011000
 LCD_FunctionSet_4bit_2lines    = %00101000
+LCD_SetAddressStartLineOne     = %10000000
 LCD_SetAddressStartLineTwo     = %11000000
 
 LCD_FunctionSet_4bit           = %00100000

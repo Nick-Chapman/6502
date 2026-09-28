@@ -81,6 +81,32 @@ screen_refresh:
     dey
     bne .line2
 
+    lda screen_insert_offset
+    cmp screen_display_offset
+    bmi .done ;; insert port is outside/above display portal
+    ;; insert point is below start of display
+    sec
+    lda screen_insert_offset
+    sbc screen_display_offset
+    cmp #16
+    bmi .line1_cursor
+    cmp #32
+    bmi .line2_cursor
+    ;; insert point is outside/below display portal
+    jmp .done
+.line1_cursor:
+    lda screen_insert_offset
+    and #$f
+    ora #LCD_SetAddressStartLineOne
+    jsr lcd_command
+    jmp .done
+.line2_cursor:
+    lda screen_insert_offset
+    and #$f
+    ora #LCD_SetAddressStartLineTwo
+    jsr lcd_command
+    jmp .done
+.done
     ply
     plx
     pla
