@@ -9,6 +9,7 @@
     include via.s
     include lcd.s
 
+    error_start_bit = 19
     count = 20
     incoming = 21
     ready_scanCode = 22
@@ -19,6 +20,7 @@
     upper_case = 27
 
 init_globals:
+    stz error_start_bit
     stz count
     stz incoming
     stz ready_scanCode
@@ -32,11 +34,11 @@ init_globals:
 via_init:
     lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
     sta DDRB
-    lda #0 ; no latching
+    lda #0 ; no latching, timer2 one-shot mode
     sta ACR
     lda #0
     sta PCR ; active edge negative
-    lda #%10010000 ; enable CB1
+    lda #%10110000 ; enable interrupts for timer2 and CB1(keyboard clock)
     sta IER
     rts
 
@@ -306,7 +308,7 @@ display_scancode: ;A-> (uses X)
 reset:
     ldx #$ff
     txs
-    cli
+    cli ; enable interrupts
     jsr init_globals
     jsr via_init
     jsr lcd_init
@@ -322,9 +324,17 @@ reset:
 
 irq:
     pha
+    phx
+
+    ;; Was the interupt caused by timer2?
+    lda IFR
+    and #$20
+    bne .timer2_expired
+
     clc
     lda PORTB ; ack; read data bit
     and #1
+    tax
     beq .rotate
 .data1:
     sec
@@ -333,32 +343,72 @@ irq:
     inc count
 
     lda count
+    cmp #1
+    beq .one
     cmp #9
     beq .nine
     cmp #11
     beq .eleven
     jmp .done
 
+.timer2_expired:
+    bit T2L ; ack
+    ;; Show a screen mark for dev/debug..
+    ;; lda #'%'
+    ;; jsr screen_putChar
+    ;; jsr screen_refresh ;; to see now!
+    ;; Reset count/incoming to ensure keyboard packet re-sync
+    stz count
+    stz incoming
+    jmp .done
+
+.one:
+    ;; set/start timer2
+    lda #$ff
+    sta T2L
+    sta T2H ; start; 65k clocks; about 16ms (2ms would be plenty)
+
+    txa
+    beq .done ; start bit zero as expected
+    inc error_start_bit
+    jmp .done
+
 .nine:
+    lda incoming
+    sta scancode ; saved for when we reach end of frame on bit 11
+    jmp .done
+
+.eleven:
+    txa ; the 11th bit
+    bne .eleven_ok ; must be a 1
+    lda error_start_bit
+    beq .eleven_ok ; must be a 0
+.eleven_bad:
+    ;;lda #'!'
+    ;;jsr screen_putChar
+    ;;jsr screen_refresh ;; to see now! Being slow causes accidental re-sync.
+    stz error_start_bit
+    jmp .eleven_finish
+.eleven_ok:
     lda ready_scanCode
     bne .too_slow
-    lda incoming
-    sta scancode
     inc ready_scanCode
+    ;;jmp .eleven_finish
+.eleven_finish:
+    stz count
+    stz incoming
     jmp .done
 
 .too_slow:
     lda #'#'
     jsr screen_putChar
+    jsr screen_refresh ;; to see now before we spin
 .spin:
     jmp .spin
 
-.eleven:
-    stz count
-    stz incoming
-    jmp .done
 
 .done:
+    plx
     pla
     rti
 

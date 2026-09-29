@@ -7,6 +7,9 @@ DDRA  = $6003
 T1CL  = $6004
 T1CH  = $6005
 
+T2L   = $6008
+T2H   = $6009
+
 ACR   = $600b ; auxillary control register (timer/shift/latching)
 PCR   = $600c ; peripheral control register (CA, CB)
 IFR   = $600d ; interrupt flag register
