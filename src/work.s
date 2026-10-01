@@ -4,9 +4,8 @@
     include via.s
     include lcd.s
 
-cpu_clks_per_sec = 4000000
 ticks_per_sec = 100
-clks_per_tick = (cpu_clks_per_sec / ticks_per_sec - 2)
+cpu_cycles_per_tick = (cpu_cycles_per_sec / ticks_per_sec - 2)
 
 via_init:
     ;; set all pins on port-B and port-A as output
@@ -21,9 +20,9 @@ via_init:
     ;; Setup timer1
     lda #%01000000 ; timer-1 in free running mode
     sta ACR
-    lda #<clks_per_tick
+    lda #<cpu_cycles_per_tick
     sta T1CL
-    lda #>clks_per_tick
+    lda #>cpu_cycles_per_tick
     sta T1CH ;; starts timer
     rts
 

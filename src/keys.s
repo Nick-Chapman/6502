@@ -38,7 +38,7 @@ via_init:
     sta ACR
     lda #0
     sta PCR ; active edge negative
-    lda #(via_ier_enable | via_ca1) ;; | via_timer2)
+    lda #(via_ier_enable | via_ca1 | via_timer2)
     sta IER
     rts
 
@@ -325,20 +325,16 @@ reset:
 irq:
     pha
     phx
-
     ldx IFR
-
-    ;; ;; Was the interrupt caused by the keyboard packet timeout?
-    ;; txa
-    ;; and #(via_timer2)
-    ;; bne .timer2_expired
-
+    ;; Was the interrupt caused by the keyboard inactivity timeout?
+    txa
+    and #(via_timer2)
+    bne .timer2_expired
     ;; Was the interrupt caused by the keyboard?
     txa
     and #(via_ca1)
     bne .keyboard
-
-    ;; any other interrupt. show mark, expect this case to never happen
+    ;; Any other interrupt? We never expect this to happen. Show a mark.
     lda #'!'
     jsr screen_putChar
     jmp .done
@@ -365,22 +361,26 @@ irq:
     beq .eleven
     jmp .done
 
-;; .timer2_expired:
-;;     bit T2L ; ack
-;;     ;; Show a screen mark for dev/debug.. -- TODO: if count is not already 0
-;;     ;; lda #'%'
-;;     ;; jsr screen_putChar
-;;     ;; jsr screen_refresh ;; to see now!
-;;     ;; Reset count/incoming to ensure keyboard packet re-sync
-;;     stz count
-;;     stz incoming
-;;     jmp .done
+.timer2_expired:
+    bit T2L ; ack
+    lda count
+    beq .done ; we are already synchronised
+    ;; framing error; re-synchronize
+    stz count
+    stz incoming
+    jmp .done
 
 .one:
-    ;; ;; set/start timer2
-    ;; lda #$ff
-    ;; sta T2L
-    ;; sta T2H ; start; 65k clocks; about 16ms (2ms would be plenty)
+    ;; start timer2 for keyboard inactivity.
+    ;; The 11-bit packet should be received within 1ms from the first-bit arriving
+    ;; (long enough for even the slowest keyboard -- 10 kHz)
+    ;; The fastest keyboard (17 kHz) may transmit successive packets without aany pause.
+    ;; The inactivity timeout will just be restarted on bit-1 of subsequent packets
+    keyboard_inactivity_timeout = cpu_cycles_per_ms ;; 1ms
+    lda #<keyboard_inactivity_timeout
+    sta T2L
+    lda #>keyboard_inactivity_timeout
+    sta T2H
     txa
     beq .done ; start bit zero as expected
     inc error_start_bit
@@ -412,6 +412,8 @@ irq:
     lda #'#'
     jsr screen_putChar
     jsr screen_refresh ;; to see now before we spin
+.spin:
+    jmp .spin
 
 .done:
     plx

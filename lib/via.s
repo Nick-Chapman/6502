@@ -1,4 +1,9 @@
-;; TODO: lower case & prefix with via_
+
+    cpu_cycles_per_ms = 4000 ;; Running with 4 MHz clock
+
+    cpu_cycles_per_sec = 1000 * cpu_cycles_per_ms
+
+    ;; TODO: lower case & prefix with via_
 
 PORTB = $6000
 PORTA = $6001
