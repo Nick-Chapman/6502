@@ -344,7 +344,7 @@ irq:
 
 .keyboard:
     clc
-    lda via_porta ; ack keyboard -- TODO: do this via IRF flags
+    lda via_porta ; ack keyboard (alternatively: lda #(via_ca1) / sta via_ifr)
     lda via_portb ; read keyboard data bit
     and #1
     tax
