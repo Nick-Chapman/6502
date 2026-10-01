@@ -144,14 +144,30 @@ work_counter_display:
     rts
 
 work_loop_one_step:
-    ldx #0
+    ldx #80
+    ;; This inner loop takes 80*5 = 400 clock cycles.
+    ;; Which with a 4 MhZ clock equates to 1/10 ms (or 100us)
+    ;; So, if this loop got 100% of the cpu time, it would reach 10000 every second
+    ;; We shall use BCD to represent the counter.
+    ;; So the value displayed each second will show the percentage (to 2dp)
+    ;; of time spent doing "useful" counting work, in the inner loop.
 .loop:
     dex
     bne .loop
-    inc work_counter
+
+    php
+    sed
+    lda work_counter
+    clc
+    adc #1
+    sta work_counter
     bne .done
-    inc work_counter + 1
+    lda work_counter + 1
+    clc
+    adc #1
+    sta work_counter + 1
 .done:
+    plp
     rts
 
 irq:
