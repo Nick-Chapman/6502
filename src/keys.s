@@ -64,7 +64,8 @@ screen_refresh:
     phy
     lda #LCD_ReturnHome
     jsr lcd_command
-
+    ;; display the 32 characters of the screen which can be 'seen' by the display
+    ;; line1...
     ldx screen_display_offset
     ldy #16
 .line1:
@@ -73,7 +74,7 @@ screen_refresh:
     inx
     dey
     bne .line1
-
+    ;; line2...
     lda #LCD_SetAddressStartLineTwo
     jsr lcd_command
     ldy #16
@@ -83,7 +84,7 @@ screen_refresh:
     inx
     dey
     bne .line2
-
+    ;; position the cursor at the insert point, if visible
     lda screen_insert_offset
     cmp screen_display_offset
     bmi .done ;; insert-offset is outside/above display portal
@@ -92,9 +93,9 @@ screen_refresh:
     lda screen_insert_offset
     sbc screen_display_offset
     cmp #16
-    bmi .line1_cursor
+    bmi .line1_cursor ; visible on line1
     cmp #32
-    bmi .line2_cursor
+    bmi .line2_cursor ; visible on line2
     ;; insert-offset is outside/below display portal
     jmp .done
 .line1_cursor:
@@ -115,17 +116,29 @@ screen_refresh:
     pla
     rts
 
-screen_reposition: ;; TODO: handle upward scroll & more general reposition
+screen_reposition:
     lda screen_insert_offset
     sec
     sbc screen_display_offset
+    bmi .reposition_up
     cmp #32
-    bmi .done
-    clc
+    bpl .reposition_down
+    ; insert offset is visible; no reposition necessary
+    rts
+    ;; NOTE: this reposition code assumes movement of no more than a single line up/down.
+    ;; So works well enough for the arrow keys, Enter and Backspace
+    ;; But it wont work for Home/End.
+.reposition_up:
     lda screen_display_offset
-    adc #16
+    sec
+    sbc #16 ; up one line
     sta screen_display_offset
-.done:
+    rts
+.reposition_down:
+    lda screen_display_offset
+    clc
+    adc #16 ; down one line
+    sta screen_display_offset
     rts
 
 screen_left1:
@@ -146,7 +159,6 @@ screen_down1:
     adc #16
     sta screen_insert_offset
     jmp screen_reposition
-
 screen_enter:
     lda #$0f
     trb screen_insert_offset
