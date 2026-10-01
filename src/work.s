@@ -9,21 +9,20 @@ cpu_cycles_per_tick = (cpu_cycles_per_sec / ticks_per_sec - 2)
 
 via_init:
     ;; set all pins on port-B and port-A as output
-    lda #%11111111
-    sta DDRB
-    sta DDRA
-    ;lda #%00000000 ; negative edge on any of CA1,CA2,CB1,CB2
-    ;sta PCR
-    ;;lda #%11000011 ; enable Timer1, CA1 and CA2
-    lda #%11000000 ; enable just Timer1
-    sta IER
-    ;; Setup timer1
-    lda #%01000000 ; timer-1 in free running mode
-    sta ACR
+    lda #$ff
+    sta via_ddrb
+    sta via_ddra
+
+    lda #(via_ier_enable | via_timer1)
+    sta via_ier
+
+    lda #(via_acr_timer1_freerunning)
+    sta via_acr
+
     lda #<cpu_cycles_per_tick
-    sta T1CL
+    sta via_t1cl
     lda #>cpu_cycles_per_tick
-    sta T1CH ;; starts timer
+    sta via_t1ch ;; starts timer
     rts
 
     include hex.s
@@ -71,9 +70,9 @@ every_second:
     jsr snap_counter
     jsr reset_counter
 
-    lda PORTB
+    lda via_portb
     eor #1 ; toggle LED
-    sta PORTB
+    sta via_portb
 .no:
     rts
 
@@ -170,12 +169,12 @@ inc_seconds:
 
 irq:
     pha
-    bit IFR
+    bit via_ifr
     bvs .timer1
     jmp .done
 .timer1:
     lda #%01000000
-    sta IFR
+    sta via_ifr
     inc jiffy
     jsr every_second
     jsr update_status_display

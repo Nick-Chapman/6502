@@ -75,8 +75,8 @@ yield_code:
 
 via_init:
     lda #%11111111
-    sta DDRB
-    sta DDRA
+    sta via_ddrb
+    sta via_ddra
     rts
 
 reset:

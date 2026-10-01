@@ -7,12 +7,12 @@
 via_init:
     ;; set all pins on port-B and port-A as output
     lda #%11111111
-    sta DDRB
-    sta DDRA
+    sta via_ddrb
+    sta via_ddra
     lda #%00000000 ; negative edge on any of CA1,CA2,CB1,CB2
-    sta PCR
-    lda #%10000001 ; enable CA2
-    sta IER
+    sta via_pcr
+    lda #(via_ier_enable | via_ca2)
+    sta via_ier
     rts
 
     include hex.s
@@ -28,7 +28,7 @@ reset:
 
 irq:
     pha
-    lda IFR
+    lda via_ifr
     ror
     bcs .ca2
     ror
@@ -41,13 +41,13 @@ irq:
     lda #'1'
     jsr lcd_emitChar
     lda #%00000010
-    sta IFR
+    sta via_ifr
     jmp .done
 .ca2:
     lda #'2'
     jsr lcd_emitChar
     lda #%00000001
-    sta IFR
+    sta via_ifr
     jmp .done
 .done:
     pla

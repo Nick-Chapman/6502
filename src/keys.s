@@ -33,13 +33,16 @@ init_globals:
 
 via_init:
     lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
-    sta DDRB
+    sta via_ddrb
+
     lda #0 ; no latching, timer2 one-shot mode
-    sta ACR
+    sta via_acr
+
     lda #0
-    sta PCR ; active edge negative
+    sta via_pcr ; active edge negative
+
     lda #(via_ier_enable | via_ca1 | via_timer2)
-    sta IER
+    sta via_ier
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -325,7 +328,7 @@ reset:
 irq:
     pha
     phx
-    ldx IFR
+    ldx via_ifr
     ;; Was the interrupt caused by the keyboard inactivity timeout?
     txa
     and #(via_timer2)
@@ -341,8 +344,8 @@ irq:
 
 .keyboard:
     clc
-    lda PORTA ; ack keyboard -- TODO: do this via IRF flags
-    lda PORTB ; read keyboard data bit
+    lda via_porta ; ack keyboard -- TODO: do this via IRF flags
+    lda via_portb ; read keyboard data bit
     and #1
     tax
     beq .rotate
@@ -362,7 +365,7 @@ irq:
     jmp .done
 
 .timer2_expired:
-    bit T2L ; ack
+    bit via_t2l ; ack
     lda count
     beq .done ; we are already synchronised
     ;; framing error; re-synchronize
@@ -378,9 +381,9 @@ irq:
     ;; The inactivity timeout will just be restarted on bit-1 of subsequent packets
     keyboard_inactivity_timeout = cpu_cycles_per_ms ;; 1ms
     lda #<keyboard_inactivity_timeout
-    sta T2L
+    sta via_t2l
     lda #>keyboard_inactivity_timeout
-    sta T2H
+    sta via_t2h
     txa
     beq .done ; start bit zero as expected
     inc error_start_bit

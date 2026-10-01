@@ -1,25 +1,23 @@
 
     cpu_cycles_per_ms = 4000 ;; Running with 4 MHz clock
-
     cpu_cycles_per_sec = 1000 * cpu_cycles_per_ms
 
-    ;; TODO: lower case & prefix with via_
+    via_portb = $6000
+    via_porta = $6001
+    via_ddrb  = $6002
+    via_ddra  = $6003
+    via_t1cl  = $6004
+    via_t1ch  = $6005
 
-PORTB = $6000
-PORTA = $6001
-DDRB  = $6002 ; data-direction register
-DDRA  = $6003
+    via_t2l   = $6008
+    via_t2h   = $6009
 
-T1CL  = $6004
-T1CH  = $6005
+    via_acr   = $600b ; auxillary control register (timer/shift/latching)
+    via_pcr   = $600c ; peripheral control register (CA, CB)
+    via_ifr   = $600d ; interrupt flag register
+    via_ier   = $600e ; interrupt enable register
 
-T2L   = $6008
-T2H   = $6009
-
-ACR   = $600b ; auxillary control register (timer/shift/latching)
-PCR   = $600c ; peripheral control register (CA, CB)
-IFR   = $600d ; interrupt flag register
-IER   = $600e ; interrupt enable register
+    via_acr_timer1_freerunning = $40
 
     via_ier_enable     = $80
 

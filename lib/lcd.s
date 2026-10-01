@@ -4,9 +4,9 @@ RW = %00000100 ; read/write
 E  = %00001000 ; enable
 
 ;;; switch back to B
-RS_PORT = PORTB
-RW_PORT = PORTB
-ENABLE_PORT = PORTB
+RS_PORT = via_portb
+RW_PORT = via_portb
+ENABLE_PORT = via_portb
 
 LCD_ClearDisplay               = %00000001
 LCD_ReturnHome                 = %00000010
@@ -79,13 +79,13 @@ lcd_wait: ; splats A
     jsr set_RW
     jsr set_enable
     lda #%00001110 ; temp set read for least-sig for pins of port-B. TODO: fix
-    sta DDRB
+    sta via_ddrb
 .loop:
-    lda PORTB
+    lda via_portb
     and #$80
     bne .loop ; tight loop
     lda #$fe ; revert port-B to all-write - NO, bit-0 is not out to meddle with. TODO fix
-    sta DDRB
+    sta via_ddrb
     jsr clear_enable
     jsr set_enable
     jsr clear_enable
@@ -115,12 +115,12 @@ TEMP = 0
 set_nibble: ; A->()
     and #$f0 ; change high nibble only
     pha
-    lda PORTB
+    lda via_portb
     and #$0f ; preserve low nibble
     sta TEMP
     pla
     ora TEMP
-    sta PORTB
+    sta via_portb
     rts
 
 set_enable:
