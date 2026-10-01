@@ -10,6 +10,7 @@
     include lcd.s
     include screen.s
     include scancode.s
+    include coop.s
 
     screen_insert_offset = 10
     screen_display_offset = 11
@@ -29,6 +30,8 @@
     jiffy_work_snap = 42
 
     work_counter = 50 ; 2bytes
+
+    coop_stack_bottom = 60
 
     screen_buffer = $200 ; 256 bytes
 
@@ -75,7 +78,9 @@ via_init:
 reset:
     ldx #$ff
     txs
+    stx coop_stack_bottom
     cli ; enable interrupts
+
     jsr ps2_init
     jsr lcd_init
     jsr scancode_init
@@ -84,30 +89,34 @@ reset:
     jsr work_counter_init
     jsr via_init ; starting jiffy timer
 
-.loop:
-    jsr display_scancode_if_available
-    jsr periodic_screen_refresh
-    jsr periodic_work_counter_display_and_reset
-    jsr work_loop_one_step
+    spawn display_scancode_if_available
+    spawn periodic_screen_refresh
+    spawn periodic_work_counter_display_and_reset
+    spawn work_loop_one_step
+    finish
     ;; By calling work_loop_one_step twice in this loop, we increase
     ;; CPU utilization from 75% to 80.76% (5.76 points)
     ;; This change reduces the number of context switches, but I am not
     ;; sure how to compute the ratio, so cant pin a CPU cost on the switches.
-    jmp .loop
+
 
 display_scancode_if_available:
+.loop:
     lda ps2_ready
     beq .done
     stz ps2_ready
     lda ps2_scancode
-    jmp scancode_display ; tail
+    jsr scancode_display
 .done:
-    rts
+    yield
+    jmp .loop
+
 
 ;;; By increasing the #refresh/second from 10 to 20
 ;;; We see the cpu-utilization drop from 75% to 71.4% (3.6 points)
 ;;; So the baselne refresh rate of 10/sec costs 3.6%
 periodic_screen_refresh:
+.loop:
     ;; TODO: co-op tasks would avoid need for global: jiffy_last_screen_refresh
     ldx jiffy_now
     txa
@@ -116,11 +125,13 @@ periodic_screen_refresh:
     cmp #10 ; 1/10s (fast enough for eye?)
     bcc .done
     stx jiffy_last_screen_refresh
-    jmp screen_refresh ; tail
-.done
-    rts
+    jsr screen_refresh
+.done:
+    yield
+    jmp .loop
 
 periodic_work_counter_display_and_reset:
+.loop:
     ldx jiffy_now
     txa
     sec
@@ -131,7 +142,8 @@ periodic_work_counter_display_and_reset:
     jsr work_counter_display
     jsr work_counter_init
 .done
-    rts
+    yield
+    jmp .loop
 
 work_counter_display:
     lda screen_insert_offset
@@ -151,6 +163,7 @@ work_counter_display:
     rts
 
 work_loop_one_step:
+.loop:
     ldx #80
     ;; This inner loop takes 80*5 = 400 clock cycles.
     ;; Which with a 4 MhZ clock equates to 1/10 ms (or 100us)
@@ -159,9 +172,9 @@ work_loop_one_step:
     ;; So the value displayed each second will show the percentage (to 2dp)
     ;; of time spent doing "useful" counting work, in the inner loop.
     ;; The baseline figure for out experiments is 75%
-.loop:
+.inner:
     dex
-    bne .loop
+    bne .inner
 
     ;; By doubling the size of the work chunk (from 80 to 160 step)
     ;; And incrementing the counter by 2 on each step.
@@ -185,7 +198,8 @@ work_loop_one_step:
     sta work_counter + 1
 .done:
     plp
-    rts
+    yield
+    jmp .loop
 
 irq:
     pha

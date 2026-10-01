@@ -53,8 +53,8 @@ finish_code:
     RESTORE
     rts
 .all_tasks_finished:
-    lda #'!'
-    jsr lcd_emitChar ;; TODO: need to remove
+    ;;lda #'!'
+    ;;jsr lcd_emitChar
 .spin:
     jmp .spin
 
