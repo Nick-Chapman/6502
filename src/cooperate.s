@@ -10,68 +10,10 @@
 
     include via.s
     include lcd.s
-    include hex.s
+    include hex.s ;; TODO, not needed
+    include coop.s
 
-    BOTTOM = 20
-
-SAVE: macro
-    pha
-    phx
-    phy
-endmacro
-
-RESTORE: macro
-    ply
-    plx
-    pla
-endmacro
-
-spawn: macro A
-    jsr .here\@
-    jmp .after\@
-.here\@:
-    SAVE
-    jmp \A
-.after\@:
-endmacro
-
-finish: macro
-    jmp finish_code
-endmacro
-
-finish_code:
-    tsx
-    cpx BOTTOM
-    beq .all_tasks_finished
-    RESTORE
-    rts
-.all_tasks_finished:
-    lda #'!'
-    jsr lcd_emitChar
-.spin:
-    jmp .spin
-
-yield: macro
-    jsr yield_code
-endmacro
-
-bury: macro
-    pla
-    iny
-    sta $100,y
-endmacro
-
-yield_code:
-    SAVE
-    ldy BOTTOM
-    bury ;y
-    bury ;x
-    bury ;a
-    bury ;ret/1
-    bury ;ret/2
-    sty BOTTOM
-    RESTORE
-    rts
+    coop_stack_bottom = 20
 
 via_init:
     lda #%11111111
@@ -83,7 +25,7 @@ reset:
     cli
     ldx #$ff
     txs
-    stx BOTTOM
+    stx coop_stack_bottom
 
     jsr via_init
     jsr lcd_init
