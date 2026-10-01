@@ -23,6 +23,10 @@
     ps2_scancode = 33
     ps2_ready = 34
 
+    ;; jiffys increment every 1/100th of a seconds; rolling over ever 2.56s
+    jiffy_now = 40
+    jiffy_last_screen_refresh = 41
+
     screen_buffer = $200 ; 256 bytes
 
 ps2_init:
@@ -33,15 +37,26 @@ ps2_init:
     stz ps2_scancode
     rts
 
+jiffys_per_sec = 100
+cpu_cycles_per_jiffy = (cpu_cycles_per_sec / jiffys_per_sec - 2)
+
 via_init:
     lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
     sta via_ddrb
-    lda #0 ; no latching, timer2 one-shot mode
-    sta via_acr
+
     lda #0
     sta via_pcr ; active edge negative
-    lda #(via_ier_enable | via_ca1 | via_timer2)
+
+    lda #(via_ier_enable | via_ca1 | via_timer1 | via_timer2)
     sta via_ier
+
+    lda #(via_acr_timer1_freerunning)
+    sta via_acr
+
+    lda #<cpu_cycles_per_jiffy
+    sta via_t1cl
+    lda #>cpu_cycles_per_jiffy
+    sta via_t1ch ;; starts timer
     rts
 
 reset:
@@ -49,34 +64,79 @@ reset:
     txs
     cli ; enable interrupts
     jsr ps2_init
-    jsr via_init
     jsr lcd_init
     jsr scancode_init
     jsr screen_init
+
+    stz jiffy_now
+    stz jiffy_last_screen_refresh
+
+    jsr via_init ; starting jiffy timer
+
 .loop:
+    jsr display_scancode_if_available
+    jsr periodic_screen_refresh
+    jmp .loop
+
+display_scancode_if_available:
     lda ps2_ready
-    beq .loop
+    beq .done
     stz ps2_ready
     lda ps2_scancode
-    jsr scancode_display
-    jsr screen_refresh ;; TODO: move to separate task executed on a timer
-    jmp .loop
+    jmp scancode_display ; tail
+.done:
+    rts
+
+periodic_screen_refresh:
+    ;; TODO: co-op tasks would avoid need for global: jiffy_last_screen_refresh
+    ldx jiffy_now
+    txa
+    sec
+    sbc jiffy_last_screen_refresh
+    cmp #10 ; 1/10s (fast enough for eye?)
+    bcc .done
+    stx jiffy_last_screen_refresh
+    jmp screen_refresh ; tail
+.done
+    rts
 
 irq:
     pha
     phx
     ldx via_ifr
-    ;; Was the interrupt caused by the keyboard inactivity timeout?
-    txa
-    and #(via_timer2)
-    bne .timer2_expired
+
     ;; Was the interrupt caused by the keyboard?
     txa
     and #(via_ca1)
     bne .keyboard
+
+    ;; Was the interrupt caused by the keyboard inactivity timeout?
+    txa
+    and #(via_timer2)
+    bne .timer2_expired
+
+    ;; Was the interrupt caused by the jiffy timer?
+    txa
+    and #(via_timer1)
+    bne .timer1_expired
+
     ;; Any other interrupt? We never expect this to happen. Show a mark.
     lda #'!'
     jsr screen_putChar
+    jmp .done
+
+.timer1_expired:
+    bit via_t1cl
+    inc jiffy_now
+    jmp .done
+
+.timer2_expired:
+    bit via_t2l ; ack
+    lda ps2_bitcount
+    beq .done ; we are already synchronised
+    ;; framing error; re-synchronize
+    stz ps2_bitcount
+    stz ps2_incoming
     jmp .done
 
 .keyboard:
@@ -99,15 +159,6 @@ irq:
     beq .nine
     cmp #11
     beq .eleven
-    jmp .done
-
-.timer2_expired:
-    bit via_t2l ; ack
-    lda ps2_bitcount
-    beq .done ; we are already synchronised
-    ;; framing error; re-synchronize
-    stz ps2_bitcount
-    stz ps2_incoming
     jmp .done
 
 .one:
@@ -140,20 +191,21 @@ irq:
     stz ps2_error_start_bit
     jmp .eleven_finish
 .eleven_ok:
-    lda ps2_ready
-    bne .too_slow
+    ;; Loose packets if the scancode display routine is too slow
+    ;lda ps2_ready
+    ;bne .too_slow
     inc ps2_ready
 .eleven_finish:
     stz ps2_bitcount
     stz ps2_incoming
     jmp .done
 
-.too_slow:
-    lda #'#'
-    jsr screen_putChar
-    jsr screen_refresh ;; to see now before we spin
-.spin:
-    jmp .spin
+;; .too_slow:
+;;     lda #'#'
+;;     jsr screen_putChar
+;;     jsr screen_refresh ;; to see now before we spin
+;; .spin:
+;;     jmp .spin
 
 .done:
     plx
