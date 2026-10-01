@@ -148,9 +148,8 @@ screen_down1:
     jmp screen_reposition
 
 screen_enter:
-    lda #$f0 ;; TODO: use bit test and reset opcode?
-    and screen_insert_offset
-    sta screen_insert_offset
+    lda #$0f
+    trb screen_insert_offset
     jmp screen_down1
 
 screen_putChar: ; A
