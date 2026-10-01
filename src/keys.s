@@ -129,12 +129,16 @@ periodic_work_counter_display_and_reset:
 work_counter_display:
     lda screen_insert_offset
     pha
+    lda screen_display_offset
+    pha
     lda #11
     sta screen_insert_offset
     lda work_counter + 1
     jsr screen_hex_byte
     lda work_counter
     jsr screen_hex_byte
+    pla
+    sta screen_display_offset
     pla
     sta screen_insert_offset
     rts
