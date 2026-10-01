@@ -26,6 +26,9 @@
     ;; jiffys increment every 1/100th of a seconds; rolling over ever 2.56s
     jiffy_now = 40
     jiffy_last_screen_refresh = 41
+    jiffy_work_snap = 42
+
+    work_counter = 50 ; 2bytes
 
     screen_buffer = $200 ; 256 bytes
 
@@ -37,8 +40,18 @@ ps2_init:
     stz ps2_scancode
     rts
 
+work_counter_init:
+    stz work_counter
+    stz work_counter + 1
+    rts
+
 jiffys_per_sec = 100
 cpu_cycles_per_jiffy = (cpu_cycles_per_sec / jiffys_per_sec - 2)
+
+jiffy_init:
+    stz jiffy_now
+    stz jiffy_last_screen_refresh
+    rts
 
 via_init:
     lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
@@ -67,15 +80,15 @@ reset:
     jsr lcd_init
     jsr scancode_init
     jsr screen_init
-
-    stz jiffy_now
-    stz jiffy_last_screen_refresh
-
+    jsr jiffy_init
+    jsr work_counter_init
     jsr via_init ; starting jiffy timer
 
 .loop:
     jsr display_scancode_if_available
     jsr periodic_screen_refresh
+    jsr periodic_work_counter_display_and_reset
+    jsr work_loop_one_step
     jmp .loop
 
 display_scancode_if_available:
@@ -98,6 +111,43 @@ periodic_screen_refresh:
     stx jiffy_last_screen_refresh
     jmp screen_refresh ; tail
 .done
+    rts
+
+periodic_work_counter_display_and_reset:
+    ldx jiffy_now
+    txa
+    sec
+    sbc jiffy_work_snap
+    cmp #100 ; every second
+    bcc .done
+    stx jiffy_work_snap
+    jsr work_counter_display
+    jsr work_counter_init
+.done
+    rts
+
+work_counter_display:
+    lda screen_insert_offset
+    pha
+    lda #11
+    sta screen_insert_offset
+    lda work_counter + 1
+    jsr screen_hex_byte
+    lda work_counter
+    jsr screen_hex_byte
+    pla
+    sta screen_insert_offset
+    rts
+
+work_loop_one_step:
+    ldx #0
+.loop:
+    dex
+    bne .loop
+    inc work_counter
+    bne .done
+    inc work_counter + 1
+.done:
     rts
 
 irq:
