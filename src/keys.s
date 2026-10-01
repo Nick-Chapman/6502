@@ -38,7 +38,7 @@ via_init:
     sta ACR
     lda #0
     sta PCR ; active edge negative
-    lda #%10110000 ; enable interrupts for timer2 and CB1(keyboard clock)
+    lda #(via_ier_enable | via_ca1) ;; | via_timer2)
     sta IER
     rts
 
@@ -320,19 +320,33 @@ reset:
     lda scancode
     jsr display_scancode
     jsr screen_refresh ;; TODO: move to separate task executed on a timer
-    Jmp .loop
+    jmp .loop
 
 irq:
     pha
     phx
 
-    ;; Was the interupt caused by timer2?
-    lda IFR
-    and #$20
-    bne .timer2_expired
+    ldx IFR
 
+    ;; ;; Was the interrupt caused by the keyboard packet timeout?
+    ;; txa
+    ;; and #(via_timer2)
+    ;; bne .timer2_expired
+
+    ;; Was the interrupt caused by the keyboard?
+    txa
+    and #(via_ca1)
+    bne .keyboard
+
+    ;; any other interrupt. show mark, expect this case to never happen
+    lda #'!'
+    jsr screen_putChar
+    jmp .done
+
+.keyboard:
     clc
-    lda PORTB ; ack; read data bit
+    lda PORTA ; ack keyboard -- TODO: do this via IRF flags
+    lda PORTB ; read keyboard data bit
     and #1
     tax
     beq .rotate
@@ -351,23 +365,22 @@ irq:
     beq .eleven
     jmp .done
 
-.timer2_expired:
-    bit T2L ; ack
-    ;; Show a screen mark for dev/debug..
-    ;; lda #'%'
-    ;; jsr screen_putChar
-    ;; jsr screen_refresh ;; to see now!
-    ;; Reset count/incoming to ensure keyboard packet re-sync
-    stz count
-    stz incoming
-    jmp .done
+;; .timer2_expired:
+;;     bit T2L ; ack
+;;     ;; Show a screen mark for dev/debug.. -- TODO: if count is not already 0
+;;     ;; lda #'%'
+;;     ;; jsr screen_putChar
+;;     ;; jsr screen_refresh ;; to see now!
+;;     ;; Reset count/incoming to ensure keyboard packet re-sync
+;;     stz count
+;;     stz incoming
+;;     jmp .done
 
 .one:
-    ;; set/start timer2
-    lda #$ff
-    sta T2L
-    sta T2H ; start; 65k clocks; about 16ms (2ms would be plenty)
-
+    ;; ;; set/start timer2
+    ;; lda #$ff
+    ;; sta T2L
+    ;; sta T2H ; start; 65k clocks; about 16ms (2ms would be plenty)
     txa
     beq .done ; start bit zero as expected
     inc error_start_bit
@@ -384,16 +397,12 @@ irq:
     lda error_start_bit
     beq .eleven_ok ; must be a 0
 .eleven_bad:
-    ;;lda #'!'
-    ;;jsr screen_putChar
-    ;;jsr screen_refresh ;; to see now! Being slow causes accidental re-sync.
     stz error_start_bit
     jmp .eleven_finish
 .eleven_ok:
     lda ready_scanCode
     bne .too_slow
     inc ready_scanCode
-    ;;jmp .eleven_finish
 .eleven_finish:
     stz count
     stz incoming
@@ -403,9 +412,6 @@ irq:
     lda #'#'
     jsr screen_putChar
     jsr screen_refresh ;; to see now before we spin
-.spin:
-    jmp .spin
-
 
 .done:
     plx
