@@ -28,7 +28,6 @@
 
     ;; jiffys increment every 1/100th of a seconds; rolling over ever 2.56s
     jiffy_now = 40
-    jiffy_work_snap = 42
 
     work_counter = 50 ; 2bytes
 
@@ -56,10 +55,6 @@ work_counter_init:
 jiffys_per_sec = 100
 cpu_cycles_per_jiffy = (cpu_cycles_per_sec / jiffys_per_sec - 2)
 
-jiffy_init:
-    stz jiffy_now
-    rts
-
 via_init:
     lda #$fe ; all outputs -- except least sig INPUT, borrowed for keyboard PS/2 data
     sta via_ddrb
@@ -79,6 +74,16 @@ via_init:
     sta via_t1ch ;; starts timer
     rts
 
+
+wait_jiffy: ; A
+    clc
+    adc jiffy_now
+.loop:
+    yield
+    cmp jiffy_now
+    bne .loop
+    rts
+
 reset:
     coop_stack_init
     cli ; enable interrupts
@@ -87,9 +92,9 @@ reset:
     jsr lcd_init
     jsr scancode_init
     jsr screen_init
-    jsr jiffy_init
     jsr work_counter_init
     jsr via_init ; starting jiffy timer
+    stz jiffy_now ; doesn't really matter
 
     spawn display_scancode_if_available
     spawn periodic_screen_refresh
@@ -135,32 +140,16 @@ display_scancode_if_available:
 periodic_screen_refresh:
 .loop:
     jsr screen_refresh
-    jsr wait10
-    jmp .loop
-
-wait10:
     lda #10
-    clc
-    adc jiffy_now
-.loop:
-    yield
-    cmp jiffy_now
-    bne .loop
-    rts
+    jsr wait_jiffy
+    jmp .loop
 
 periodic_work_counter_display_and_reset:
 .loop:
-    ldx jiffy_now
-    txa
-    sec
-    sbc jiffy_work_snap
-    cmp #100 ; every second
-    bcc .done
-    stx jiffy_work_snap
     jsr work_counter_display
     jsr work_counter_init
-.done
-    yield
+    lda #100
+    jsr wait_jiffy
     jmp .loop
 
 work_counter_display:
