@@ -1,5 +1,11 @@
 
-;;; explore cooperative multi tasking. (step towards pre-emptive)
+;;; Explore cooperative multi tasking. (step towards pre-emptive)
+;;; Main task spawns task1 and task2; task2 later spawns task3
+;;; Main task writes "{}"
+;;; task1 writes "abcde"
+;;; task2 writes "1234"
+;;; task3 writes "xx"
+;;; Interleaved output is "{a1}bx2cx3d4e"
 
     org $fffa
     word 0
@@ -10,10 +16,11 @@
 
     include via.s
     include lcd.s
-    include hex.s ;; TODO, not needed
     include coop.s
 
-    coop_stack_bottom = 20
+    temp0 = 0
+    coop_stack_base = 20
+    coop_stack_frame = 21
 
 via_init:
     lda #%11111111
@@ -22,10 +29,8 @@ via_init:
     rts
 
 reset:
+    coop_stack_init
     cli
-    ldx #$ff
-    txs
-    stx coop_stack_bottom
 
     jsr via_init
     jsr lcd_init
@@ -69,6 +74,10 @@ task2:
 task3:
     lda #'x'
     jsr lcd_emitChar
-    yield
+    jsr yield2
     jsr lcd_emitChar
     finish
+
+yield2:
+    yield
+    rts

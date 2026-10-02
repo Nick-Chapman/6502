@@ -12,6 +12,8 @@
     include scancode.s
     include coop.s
 
+    temp0 = 0
+
     screen_insert_offset = 10
     screen_display_offset = 11
 
@@ -31,7 +33,8 @@
 
     work_counter = 50 ; 2bytes
 
-    coop_stack_bottom = 60
+    coop_stack_base = 60
+    coop_stack_frame = 61
 
     screen_buffer = $200 ; 256 bytes
 
@@ -79,9 +82,7 @@ via_init:
     rts
 
 reset:
-    ldx #$ff
-    txs
-    stx coop_stack_bottom
+    coop_stack_init
     cli ; enable interrupts
 
     jsr ps2_init
