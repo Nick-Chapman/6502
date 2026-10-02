@@ -101,11 +101,6 @@ reset:
     spawn periodic_work_counter_display_and_reset
     spawn work_loop_one_step
     finish
-    ;; By calling work_loop_one_step twice in this loop, we increase
-    ;; CPU utilization from 75% to 80.76% (5.76 points)
-    ;; This change reduces the number of context switches, but I am not
-    ;; sure how to compute the ratio, so cant pin a CPU cost on the switches.
-
 
 display_scancode_if_available:
 .loop:
@@ -134,9 +129,6 @@ display_scancode_if_available:
     jmp .loop
 
 
-;;; By increasing the #refresh/second from 10 to 20
-;;; We see the cpu-utilization drop from 75% to 71.4% (3.6 points)
-;;; So the baselne refresh rate of 10/sec costs 3.6%
 periodic_screen_refresh:
 .loop:
     jsr screen_refresh
@@ -172,26 +164,10 @@ work_counter_display:
 work_loop_one_step:
 .loop:
     ldx #80
-    ;; This inner loop takes 80*5 = 400 clock cycles.
-    ;; Which with a 4 MhZ clock equates to 1/10 ms (or 100us)
-    ;; So, if this loop got 100% of the cpu time, it would reach 10000 every second
-    ;; We shall use BCD to represent the counter.
-    ;; So the value displayed each second will show the percentage (to 2dp)
-    ;; of time spent doing "useful" counting work, in the inner loop.
-    ;; The baseline figure for out experiments is 75%
 .inner:
     dex
     bne .inner
 
-    ;; By doubling the size of the work chunk (from 80 to 160 step)
-    ;; And incrementing the counter by 2 on each step.
-    ;; We see CPU utilization (time in inner loop)
-    ;; increase from 75% to 83.86% (change of 8.86 points)
-
-    ;; Since this change halves the number of times we perform the following
-    ;; BCD increment and also the number of switches between co-op tasks
-    ;; we can attribute double that figure, so 17.72% to the baseline
-    ;; cost of tasks switching and the counter increment
     php
     sed
     lda work_counter
