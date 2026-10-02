@@ -28,7 +28,6 @@
 
     ;; jiffys increment every 1/100th of a seconds; rolling over ever 2.56s
     jiffy_now = 40
-    jiffy_last_screen_refresh = 41
     jiffy_work_snap = 42
 
     work_counter = 50 ; 2bytes
@@ -59,7 +58,6 @@ cpu_cycles_per_jiffy = (cpu_cycles_per_sec / jiffys_per_sec - 2)
 
 jiffy_init:
     stz jiffy_now
-    stz jiffy_last_screen_refresh
     rts
 
 via_init:
@@ -136,18 +134,19 @@ display_scancode_if_available:
 ;;; So the baselne refresh rate of 10/sec costs 3.6%
 periodic_screen_refresh:
 .loop:
-    ;; TODO: co-op tasks would avoid need for global: jiffy_last_screen_refresh
-    ldx jiffy_now
-    txa
-    sec
-    sbc jiffy_last_screen_refresh
-    cmp #10 ; 1/10s (fast enough for eye?)
-    bcc .done
-    stx jiffy_last_screen_refresh
     jsr screen_refresh
-.done:
-    yield
+    jsr wait10
     jmp .loop
+
+wait10:
+    lda #10
+    clc
+    adc jiffy_now
+.loop:
+    yield
+    cmp jiffy_now
+    bne .loop
+    rts
 
 periodic_work_counter_display_and_reset:
 .loop:
