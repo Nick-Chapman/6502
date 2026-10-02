@@ -21,8 +21,8 @@
     ps2_bitcount = 30
     ps2_incoming = 31
     ps2_error_start_bit = 32
-    ps2_scancode = 33
-    ps2_ready = 34
+    ps2_read_offset = 33
+    ps2_write_offset = 34
 
     ;; jiffys increment every 1/100th of a seconds; rolling over ever 2.56s
     jiffy_now = 40
@@ -35,12 +35,15 @@
 
     screen_buffer = $200 ; 256 bytes
 
+    ps2_buffer_size = 8 ;; allows 7 pending scancodes
+    ps2_buffer = $300 ; 8 bytes
+
 ps2_init:
     stz ps2_error_start_bit
     stz ps2_bitcount
     stz ps2_incoming
-    stz ps2_ready
-    stz ps2_scancode
+    stz ps2_read_offset
+    stz ps2_write_offset
     rts
 
 work_counter_init:
@@ -102,10 +105,25 @@ reset:
 
 display_scancode_if_available:
 .loop:
-    lda ps2_ready
+
+    ;; force a delay of 1/100s to motivate the need for a ps2 scancode buffer
+    lda jiffy_now
+.wait:
+    yield
+    cmp jiffy_now
+    beq .wait
+
+    lda ps2_read_offset
+    cmp ps2_write_offset
     beq .done
-    stz ps2_ready
-    lda ps2_scancode
+    ;; something to process...
+    ldx ps2_read_offset
+    sei
+    inc ps2_read_offset
+    lda #ps2_buffer_size
+    trb ps2_read_offset
+    cli
+    lda ps2_buffer, x
     jsr scancode_display
 .done:
     yield
@@ -280,7 +298,9 @@ irq:
 
 .nine:
     lda ps2_incoming
-    sta ps2_scancode ; saved for when we reach end of frame on bit 11
+    ;; save incoming, but dont advance the write_pointer until bit-11
+    ldx ps2_write_offset
+    sta ps2_buffer, x
     jmp .done
 
 .eleven:
@@ -292,21 +312,23 @@ irq:
     stz ps2_error_start_bit
     jmp .eleven_finish
 .eleven_ok:
-    ;; Loose packets if the scancode display routine is too slow
-    ;lda ps2_ready
-    ;bne .too_slow
-    inc ps2_ready
+
+    inc ps2_write_offset
+    lda #ps2_buffer_size
+    trb ps2_write_offset
+
+    lda ps2_write_offset
+    cmp ps2_read_offset
+    bne .eleven_finish
+
+    ;; ps2_buffer overrun; show a mark but continue
+    lda #'#'
+    jsr screen_putChar
+
 .eleven_finish:
     stz ps2_bitcount
     stz ps2_incoming
     jmp .done
-
-;; .too_slow:
-;;     lda #'#'
-;;     jsr screen_putChar
-;;     jsr screen_refresh ;; to see now before we spin
-;; .spin:
-;;     jmp .spin
 
 .done:
     plx
