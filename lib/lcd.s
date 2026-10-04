@@ -55,14 +55,18 @@ lcd_half_command: ; A->() ;; for use during initialization
     jmp send_nibble
 
 lcd_command: ; A->()
+    sei
     pha
     jsr lcd_wait
     jsr clear_RS
     jsr clear_RW
     pla
-    jmp send_hi_and_lo_nibbles
+    jsr send_hi_and_lo_nibbles
+    cli
+    rts
 
 lcd_emitChar: ; A->()
+    sei
     pha
     pha
     jsr lcd_wait
@@ -71,6 +75,7 @@ lcd_emitChar: ; A->()
     pla
     jsr send_hi_and_lo_nibbles
     pla
+    cli
     rts
 
 

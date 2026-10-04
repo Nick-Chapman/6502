@@ -24,6 +24,14 @@ spawn: macro A
     SAVE ; 5 more
     tsx
     stx coop_stack_frame
+    inx
+    inx
+    lda $100,x ; preserve a for spawned yask
+    pha
+    inx
+    lda $100,x
+    tax ; preserve x for spawned task
+    pla
     jmp \A
 .after\@:
 endmacro
@@ -38,18 +46,17 @@ endmacro
 
 ;;; Internal macros: SAVE, RESTORE, BURY
 
-SAVE: macro
+SAVE: macro ; mucks a/x
     php
-    pha
-    phx
     phy
+    phx
+    pha
 
     tsx
     stx temp0
     lda coop_stack_frame
     sec
     sbc temp0
-
     pha
 endmacro
 
@@ -62,9 +69,9 @@ RESTORE: macro
     adc temp0
     sta coop_stack_frame
 
-    ply
-    plx
     pla
+    plx
+    ply
     plp
 endmacro
 
@@ -87,19 +94,44 @@ finish_code:
 yield_code:
     SAVE
     ldy coop_stack_base
-
     tsx
     stx temp0
     lda coop_stack_frame
     sec
     sbc temp0
     tax ;; this will be 7 + #temps on the stack for this task
-
 .loop:
     BURY
     dex
     bne .loop
-
     sty coop_stack_base
     RESTORE
     rts
+
+fix_return_address:  macro
+    pha
+    phx
+    tsx
+    inx ; to x
+    inx ; to a
+    inx ; to p
+    inx ; to ret-lo
+    lda $100,x
+    beq .dec_lo_and_hi
+.dec_just_lo:
+    dec $100,x
+    jmp .after_dec_lo
+.dec_lo_and_hi:
+    dec $100,x
+    inx ; to ret-hi
+    dec $100,x
+.after_dec_lo:
+    plx
+    pla
+endmacro
+
+rti_yield: macro
+    fix_return_address
+    plp
+    jmp yield_code
+endmacro
