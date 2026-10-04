@@ -181,7 +181,7 @@ work_loop_one_step:
     sta work_counter + 1
 .done:
     plp
-    yield
+    yield ;; TODO: rely on pre-emption
     jmp .loop
 
 irq:
@@ -212,7 +212,43 @@ irq:
 .timer1_expired:
     bit via_t1cl
     inc jiffy_now
-    jmp .done
+
+    ;;jmp .done
+
+    ;plx
+    ;pla
+    ;rti
+
+    ;; a/x already saved on stack
+
+    tsx
+    inx ; to saved x
+    inx ; to saved a
+    inx ; to saved p
+    inx ; to saved ret-lo
+    lda $100,x
+    beq .dec_lo_and_hi
+.dec_just_lo:
+    dec $100,x
+
+.after_dec_lo:
+
+    plx
+    pla
+
+    plp
+    ;; silly to pop-3 them re-save
+    rts ;; instead of rti (after plp & having manually decrement the address). WORKS
+    ;;jmp yield_code ;; change to yield. does not :(
+
+    ;;rti
+
+.dec_lo_and_hi:
+    dec $100,x
+    inx ; to saved ret-hi
+    dec $100,x
+    jmp .after_dec_lo
+
 
 .timer2_expired:
     bit via_t2l ; ack

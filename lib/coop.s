@@ -18,10 +18,10 @@ coop_stack_init: macro
 endmacro
 
 spawn: macro A
-    jsr .here\@ ; 2 bytes on stack
+    jsr .here\@ ;; 2 bytes on stack for 'return' address
     jmp .after\@
 .here\@:
-    SAVE ; 4 more
+    SAVE ; 5 more
     tsx
     stx coop_stack_frame
     jmp \A
@@ -39,6 +39,7 @@ endmacro
 ;;; Internal macros: SAVE, RESTORE, BURY
 
 SAVE: macro
+    php
     pha
     phx
     phy
@@ -64,6 +65,7 @@ RESTORE: macro
     ply
     plx
     pla
+    plp
 endmacro
 
 BURY: macro
@@ -91,7 +93,7 @@ yield_code:
     lda coop_stack_frame
     sec
     sbc temp0
-    tax ;; this will be 6 + #temps on the stack for this task
+    tax ;; this will be 7 + #temps on the stack for this task
 
 .loop:
     BURY
