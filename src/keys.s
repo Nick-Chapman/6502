@@ -102,7 +102,7 @@ reset:
     spawn display_scancode_if_available
     spawn periodic_screen_refresh
     spawn periodic_work_counter_display_and_reset
-    spawn work_loop_one_step
+    spawn unyielding_work_loop
     finish
 
 display_scancode_if_available:
@@ -164,15 +164,13 @@ work_counter_display:
     sta screen_insert_offset
     rts
 
-work_loop_one_step:
+unyielding_work_loop:
+    sed
 .loop:
     ldx #80
 .inner:
     dex
     bne .inner
-
-    php
-    sed
     lda work_counter
     clc
     adc #1
@@ -183,8 +181,6 @@ work_loop_one_step:
     adc #1
     sta work_counter + 1
 .done:
-    plp
-    yield ;; TODO: remove to rely on pre-emption
     jmp .loop
 
 irq:
@@ -215,12 +211,9 @@ irq:
 .timer1_expired:
     bit via_t1cl
     inc jiffy_now
-
     plx
     pla
-
-    rti
-    ;;rti_yield ;; TODO please work
+    rti_yield ;; pre-emption
 
 .timer2_expired:
     bit via_t2l ; ack
