@@ -32,6 +32,7 @@ spawn: macro A
     lda $100,x
     tax ; preserve x for spawned task
     pla
+    ;; TODO: preserve p/y for spawned task
     jmp \A
 .after\@:
 endmacro
@@ -51,6 +52,8 @@ SAVE: macro ; mucks a/x
     phy
     phx
     pha
+
+    cld ; co-op will not work in BCD mode
 
     tsx
     stx temp0
