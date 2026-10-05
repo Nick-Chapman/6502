@@ -139,11 +139,14 @@ screen_enter:
     jmp screen_down1
 
 screen_putChar: ; A
+    pha
     phx
     ldx screen_insert_offset
     sta screen_buffer, x
+    jsr screen_right1
     plx
-    jmp screen_right1
+    pla
+    rts
 
 screen_backspace:
     jsr screen_left1
