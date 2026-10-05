@@ -75,13 +75,16 @@ via_init:
     rts
 
 
-wait_jiffy: ; A
+jiffy_wait: ; A (max 128)
     clc
     adc jiffy_now
+    dec
 .loop:
     yield
     cmp jiffy_now
-    bne .loop
+    ;; we cannot be sure not to overshoot, so must not use bne
+    ;; we do an inital "dec" above, so bpl makes sense
+    bpl .loop
     rts
 
 reset:
@@ -105,12 +108,12 @@ reset:
 display_scancode_if_available:
 .loop:
 
-    ;; force a delay of 1/100s to motivate the need for a ps2 scancode buffer
-    lda jiffy_now
-.wait:
-    yield
-    cmp jiffy_now
-    beq .wait
+;;     ;; force a delay of 1/100s to motivate the need for a ps2 scancode buffer
+;;     lda jiffy_now
+;; .wait:
+;;     yield
+;;     cmp jiffy_now
+;;     beq .wait
 
     lda ps2_read_offset
     cmp ps2_write_offset
@@ -133,7 +136,7 @@ periodic_screen_refresh:
 .loop:
     jsr screen_refresh
     lda #10
-    jsr wait_jiffy
+    jsr jiffy_wait
     jmp .loop
 
 periodic_work_counter_display_and_reset:
@@ -141,7 +144,7 @@ periodic_work_counter_display_and_reset:
     jsr work_counter_display
     jsr work_counter_init
     lda #100
-    jsr wait_jiffy
+    jsr jiffy_wait
     jmp .loop
 
 work_counter_display:
@@ -181,7 +184,7 @@ work_loop_one_step:
     sta work_counter + 1
 .done:
     plp
-    yield ;; TODO: rely on pre-emption
+    yield ;; TODO: remove to rely on pre-emption
     jmp .loop
 
 irq:
@@ -305,5 +308,10 @@ irq:
     pla
     rti
 
+;;; shows if the screen refresh task is running effectively
 nmi:
-    rti
+    pha
+    lda #'x'
+    jsr screen_putChar
+    pla
+    rti ;_yield
