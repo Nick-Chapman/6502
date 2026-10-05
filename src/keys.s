@@ -128,7 +128,7 @@ display_scancode_if_available:
 periodic_screen_refresh:
 .loop:
     jsr screen_refresh
-    lda #20
+    lda #10
     jsr jiffy_wait
     jmp .loop
 
