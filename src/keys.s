@@ -167,19 +167,28 @@ work_counter_display:
 unyielding_work_loop:
     sed
 .loop:
-    ldx #80
+
+    ;; This inner loop takes 80*5 = 400 cycles
+    ldx #(80 - 3)
 .inner:
     dex
     bne .inner
-    lda work_counter
-    clc
-    adc #1
-    sta work_counter
-    bne .done
-    lda work_counter + 1
-    clc
-    adc #1
-    sta work_counter + 1
+
+    ;; The following lo-byte increment takes 13 cycles;
+    ;; so we reduce the inner-loop iters by 3 and add a nop
+    nop
+
+    lda work_counter ;3
+    clc ;2
+    adc #1 ;2
+    sta work_counter ;3
+    bne .done ;3
+
+    ;; every 256 steps we get an extra 9 (10-1) cycles - forget this
+    lda work_counter + 1 ;3
+    clc ;2
+    adc #1 ;2
+    sta work_counter + 1 ;3
 .done:
     jmp .loop
 
