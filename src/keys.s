@@ -108,13 +108,6 @@ reset:
 display_scancode_if_available:
 .loop:
 
-;;     ;; force a delay of 1/100s to motivate the need for a ps2 scancode buffer
-;;     lda jiffy_now
-;; .wait:
-;;     yield
-;;     cmp jiffy_now
-;;     beq .wait
-
     lda ps2_read_offset
     cmp ps2_write_offset
     beq .done
@@ -190,6 +183,11 @@ unyielding_work_loop:
     adc #1 ;2
     sta work_counter + 1 ;3
 .done:
+    ;; Without pre-emption (and adding an explicit yield),
+    ;; reduces the CPU utilization from 95% to under 30% !
+    ;; yield
+    ;; Actually, if we add the above yield, and leave the pre-emption on (rti_yield)
+    ;; then everything stops working (dont understand why!)
     jmp .loop
 
 irq:
