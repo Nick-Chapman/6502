@@ -219,11 +219,11 @@ irq:
     bit via_t1cl
     inc jiffy_now
     lda jiffy_now
-    and #1
-    beq .yielding ; every other jiffy, so 1/50s
-    plx
-    pla
-    rti
+    ;and #1
+    ;beq .yielding ; every other jiffy, so 1/50s
+    ;plx
+    ;pla
+    ;rti
 .yielding:
     plx
     pla
